@@ -1,13 +1,14 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using System;
 
 public class RoomButton : MonoBehaviour
 {
     [Header("UI")]
-    public Text roomNameText;
-    public Text gameModeText;
-    public Text playerCountText;
+    public TextMeshProUGUI roomNameText;
+    public TextMeshProUGUI gameModeText;
+    public TextMeshProUGUI playerCountText;
     public GameObject lockIcon; // 비번방이면 켜짐
 
     private Action onClickAction;

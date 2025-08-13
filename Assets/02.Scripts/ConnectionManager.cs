@@ -1,7 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using Photon.Pun;
 using Photon.Realtime;
+using UnityEngine.SceneManagement;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
@@ -9,26 +11,29 @@ using System.Text.RegularExpressions;
 public class ConnectionManager : MonoBehaviourPunCallbacks
 {
     [Header("===== UI - 방 생성 =====")]
-    public InputField roomNameInput;
+    public TMP_InputField roomNameInput;
     public Toggle passwordToggle;
-    public InputField passwordInput;
-    public Text guideText; // 잘못된 입력 시 표시되는 텍스트
-    public Dropdown gameModeDropdown; // 방장이 선택할 게임 모드
+    public TMP_InputField passwordInput;
+    public TextMeshProUGUI guideText; // 잘못된 입력 시 표시되는 텍스트
+    public Button createRoomButton;
 
     [Header("===== UI - 방 목록 =====")]
     public Transform roomListParent;
     public GameObject roomButtonPrefab;
+    public Button refreshButton;  // 방 갱신 버튼
+    public Button backButton;     // 되돌아가기 버튼
 
     [Header("===== UI - 입장 판넬 =====")]
     public GameObject joinPanel;
-    public Text joinPanelText;
-    public InputField joinPasswordInput;
+    public TextMeshProUGUI joinPanelText;
+    public TMP_InputField joinPasswordInput;
     public Button joinYesButton;
     public Button joinNoButton;
-    public Text warningPasswordText;
+    public TextMeshProUGUI warningPasswordText;
 
     private Dictionary<string, RoomInfo> cachedRoomList = new Dictionary<string, RoomInfo>();
     private string selectedRoomName = "";
+    private string selectedRoomPassword = "";
 
     void Start()
     {
@@ -36,9 +41,14 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
         PhotonNetwork.AutomaticallySyncScene = true;
 
         passwordToggle.onValueChanged.AddListener(OnPasswordToggleChanged);
+        createRoomButton.onClick.AddListener(CreateRoom); // 버튼 클릭 연결
         passwordInput.gameObject.SetActive(false);
         joinPanel.SetActive(false);
         warningPasswordText.gameObject.SetActive(false);
+
+        // 버튼 이벤트 연결
+        refreshButton.onClick.AddListener(RefreshRoomList);
+        backButton.onClick.AddListener(ReturnToTitle);
     }
 
     #region ===== 서버 연결 및 로비 =====
@@ -62,14 +72,12 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
         string password = passwordInput.text.Trim();
         bool isPasswordOn = passwordToggle.isOn;
 
-        // 방 이름 유효성 검사
         if (!IsValidRoomName(roomName))
         {
             StartCoroutine(ShowGuideText("방 이름은 한/영/숫자 12자 이내, 특수문자 불가"));
             return;
         }
 
-        // 비밀번호 검사
         if (isPasswordOn && !IsValidPassword(password))
         {
             StartCoroutine(ShowGuideText("비밀번호는 숫자만 입력 가능합니다"));
@@ -80,7 +88,7 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
         options.MaxPlayers = 4;
         options.CustomRoomProperties = new ExitGames.Client.Photon.Hashtable()
         {
-            { "Mode", gameModeDropdown.options[gameModeDropdown.value].text },
+            { "Mode", "Showdown" }, // 기본 모드 고정
             { "PW", isPasswordOn ? password : "" }
         };
         options.CustomRoomPropertiesForLobby = new string[] { "Mode", "PW" };
@@ -105,6 +113,14 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
             }
         }
         UpdateRoomListUI();
+    }
+
+    public void RefreshRoomList()
+    {
+        ClearRoomListUI();
+        PhotonNetwork.LeaveLobby();
+        PhotonNetwork.JoinLobby();
+        Debug.Log("방 목록 갱신 요청");
     }
 
     private void UpdateRoomListUI()
@@ -137,36 +153,41 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
     void OnClickRoomButton(string roomName, string pw)
     {
         selectedRoomName = roomName;
+        selectedRoomPassword = pw;
+
         joinPanel.SetActive(true);
         joinPasswordInput.gameObject.SetActive(!string.IsNullOrEmpty(pw));
+        joinPasswordInput.text = "";
         joinPanelText.text = $"'{roomName}'에 들어가시겠습니까?";
 
         joinYesButton.onClick.RemoveAllListeners();
-        joinYesButton.onClick.AddListener(() =>
-        {
-            if (string.IsNullOrEmpty(pw))
-            {
-                PhotonNetwork.JoinRoom(selectedRoomName);
-            }
-            else
-            {
-                if (joinPasswordInput.text == pw)
-                {
-                    PhotonNetwork.JoinRoom(selectedRoomName);
-                }
-                else
-                {
-                    joinPanel.SetActive(false);
-                    StartCoroutine(ShowWarningPassword("비밀번호가 틀렸습니다"));
-                }
-            }
-        });
+        joinYesButton.onClick.AddListener(TryJoinSelectedRoom);
 
         joinNoButton.onClick.RemoveAllListeners();
         joinNoButton.onClick.AddListener(() =>
         {
             joinPanel.SetActive(false);
         });
+    }
+
+    private void TryJoinSelectedRoom()
+    {
+        if (string.IsNullOrEmpty(selectedRoomPassword))
+        {
+            PhotonNetwork.JoinRoom(selectedRoomName);
+        }
+        else
+        {
+            if (joinPasswordInput.text == selectedRoomPassword)
+            {
+                PhotonNetwork.JoinRoom(selectedRoomName);
+            }
+            else
+            {
+                joinPanel.SetActive(false);
+                StartCoroutine(ShowWarningPassword("비밀번호가 틀렸습니다"));
+            }
+        }
     }
     #endregion
 
@@ -211,11 +232,20 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
     }
     #endregion
 
+    #region ===== 되돌아가기 =====
+    public void ReturnToTitle()
+    {
+        PhotonNetwork.LeaveLobby();
+        PhotonNetwork.Disconnect();
+        SceneManager.LoadScene("TitleScene");
+    }
+    #endregion
+
     #region ===== 방 입장 완료 =====
     public override void OnJoinedRoom()
     {
         Debug.Log($"방 '{PhotonNetwork.CurrentRoom.Name}' 입장 완료!");
-        // 씬 이동: PhotonNetwork.LoadLevel("GameScene");
+        PhotonNetwork.LoadLevel("RoomScene");
     }
     #endregion
 }
