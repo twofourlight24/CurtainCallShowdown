@@ -14,6 +14,7 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
     public TMP_InputField roomNameInput;
     public Toggle passwordToggle;
     public TMP_InputField passwordInput;
+    public TMP_InputField nicknameInput; // ´Ð³×ÀÓ ÀÔ·Â ÇÊµå 
     public TextMeshProUGUI guideText; // Àß¸øµÈ ÀÔ·Â ½Ã Ç¥½ÃµÇ´Â ÅØ½ºÆ®
     public Button createRoomButton;
 
@@ -71,10 +72,17 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
         string roomName = roomNameInput.text.Trim();
         string password = passwordInput.text.Trim();
         bool isPasswordOn = passwordToggle.isOn;
+        string nickname = nicknameInput.text.Trim();
 
         if (!IsValidRoomName(roomName))
         {
-            StartCoroutine(ShowGuideText("¹æ ÀÌ¸§Àº ÇÑ/¿µ/¼ýÀÚ 12ÀÚ ÀÌ³», Æ¯¼ö¹®ÀÚ ºÒ°¡"));
+            StartCoroutine(ShowGuideText("¹æ ÀÌ¸§Àº 12ÀÚ ÀÌ³», Æ¯¼ö¹®ÀÚ ºÒ°¡"));
+            return;
+        }
+
+        if (string.IsNullOrEmpty(nickname))
+        {
+            StartCoroutine(ShowGuideText("´Ð³×ÀÓÀ» ÀÔ·ÂÇØÁÖ¼¼¿ä"));
             return;
         }
 
@@ -84,11 +92,13 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
             return;
         }
 
+        PhotonNetwork.NickName = nickname; // ´Ð³×ÀÓ ¼³Á¤
+
         RoomOptions options = new RoomOptions();
         options.MaxPlayers = 4;
         options.CustomRoomProperties = new ExitGames.Client.Photon.Hashtable()
         {
-            { "Mode", "Showdown" }, // ±âº» ¸ðµå °íÁ¤
+            { "Mode", "¼î´Ù¿î" },
             { "PW", isPasswordOn ? password : "" }
         };
         options.CustomRoomPropertiesForLobby = new string[] { "Mode", "PW" };
@@ -172,6 +182,15 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
 
     private void TryJoinSelectedRoom()
     {
+        string nickname = nicknameInput.text.Trim();
+        if (string.IsNullOrEmpty(nickname))
+        {
+            joinPanel.SetActive(false);
+            StartCoroutine(ShowGuideText("´Ð³×ÀÓÀ» ÀÔ·ÂÇØÁÖ¼¼¿ä"));
+            return;
+        }
+        PhotonNetwork.NickName = nickname; // ´Ð³×ÀÓ ¼³Á¤
+
         if (string.IsNullOrEmpty(selectedRoomPassword))
         {
             PhotonNetwork.JoinRoom(selectedRoomName);
@@ -196,7 +215,8 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
     {
         if (string.IsNullOrEmpty(name)) return false;
         if (name.Length > 12) return false;
-        return Regex.IsMatch(name, @"^[°¡-ÆRa-zA-Z0-9]+$");
+        // ÇÑ±Û, ¿µ¹®, ¼ýÀÚ, °ø¹é¸¸ Çã¿ë. Æ¯¼ö¹®ÀÚ ºÒ°¡
+        return Regex.IsMatch(name, @"^[°¡-ÆRa-zA-Z0-9 ]+$");
     }
 
     bool IsValidPassword(string pw)
