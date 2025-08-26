@@ -116,6 +116,19 @@ public class RoomManager : MonoBehaviourPunCallbacks
         // 이 코드는 현재 방 설정을 즉시 가져와 UI에 반영합니다.
         UpdateGameSetupUI(PhotonNetwork.CurrentRoom.CustomProperties);
     }
+    private void Update()
+    {
+        if (chatInput.isFocused && Input.GetKeyDown(KeyCode.Return))
+        {
+            string text = chatInput.text;
+            if (!string.IsNullOrEmpty(text))
+            {
+                photonView.RPC("ReceiveChatMessage", RpcTarget.All, PhotonNetwork.LocalPlayer.NickName, text);
+                chatInput.text = "";                  // 입력창 비우기
+                chatInput.ActivateInputField();       // 다시 포커스 주기 (계속 채팅 입력 가능하게)
+            }
+        }
+    }
 
     // Photon 콜백 함수들
     public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
@@ -146,7 +159,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
     public override void OnLeftRoom()
     {
         // 방을 나갔을 때 로비 씬으로 이동
-        PhotonNetwork.LoadLevel("LobbyScene");
+        PhotonNetwork.LoadLevel("WatingRoomScene");
     }
 
     public override void OnPlayerPropertiesUpdate(Photon.Realtime.Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
@@ -154,9 +167,9 @@ public class RoomManager : MonoBehaviourPunCallbacks
         // 플레이어의 준비 상태가 변경되면 UI를 업데이트합니다.
         if (changedProps.ContainsKey("IsReady"))
         {
-            if (playerInfoObjects.ContainsKey(targetPlayer.UserId))
+            if (playerInfoObjects.ContainsKey(targetPlayer.NickName))
             {
-                playerInfoObjects[targetPlayer.UserId].GetComponent<PlayerInfo>().SetReadyState((bool)changedProps["IsReady"]);
+                playerInfoObjects[targetPlayer.NickName].GetComponent<PlayerInfo>().SetReadyState((bool)changedProps["IsReady"]);
             }
         }
 
@@ -187,7 +200,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
             GameObject playerObj = Instantiate(playerInfoPrefab, playerPanel);
             PlayerInfo info = playerObj.GetComponent<PlayerInfo>();
             info.Setup(player);
-            playerInfoObjects[player.UserId] = playerObj;
+            playerInfoObjects[player.NickName] = playerObj;
         }
 
         CheckAllPlayersReady();
@@ -443,6 +456,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         }
     }
 
+
     [PunRPC]
     public void ReceiveChatMessage(string senderName, string message)
     {
@@ -450,7 +464,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         TMP_Text chatText = chatMsgObj.GetComponent<TMP_Text>();
         chatText.text = $"<color=yellow>{senderName}</color>: {message}";
 
-        // 스크롤 뷰를 항상 맨 아래로 이동
+        // 스크롤을 맨 아래로
         LayoutRebuilder.ForceRebuildLayoutImmediate(chatContent.GetComponent<RectTransform>());
         StartCoroutine(ScrollToBottom());
     }

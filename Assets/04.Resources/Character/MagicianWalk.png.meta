@@ -1085,7 +1085,45 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      MagicianWalk_0: -7566632319227867149
+      MagicianWalk_1: 5158750988698180960
+      MagicianWalk_10: 5501060758581266852
+      MagicianWalk_11: -6408746397396654233
+      MagicianWalk_12: -2968923314445374383
+      MagicianWalk_13: 1593096337094899616
+      MagicianWalk_14: 5422228520292296343
+      MagicianWalk_15: 2632529478143291741
+      MagicianWalk_16: -295303491111584978
+      MagicianWalk_17: 1584835436518220608
+      MagicianWalk_18: -2972756131579945095
+      MagicianWalk_19: -331070642713269527
+      MagicianWalk_2: 5510540765890946153
+      MagicianWalk_20: -8483675913664273576
+      MagicianWalk_21: -3341216950631221473
+      MagicianWalk_22: -6283690214113472457
+      MagicianWalk_23: -1092085108906525706
+      MagicianWalk_24: 4397888559361974003
+      MagicianWalk_25: -2404844842513242280
+      MagicianWalk_26: 3715558080586044872
+      MagicianWalk_27: 3581283061802650873
+      MagicianWalk_28: -3374872981810005260
+      MagicianWalk_29: 5021011786860540143
+      MagicianWalk_3: 7734073850172623018
+      MagicianWalk_30: -3009283097743870577
+      MagicianWalk_31: 4004791696340072798
+      MagicianWalk_32: 5255459567026819756
+      MagicianWalk_33: -8301864119681953765
+      MagicianWalk_34: -3958749818416949481
+      MagicianWalk_35: -3646492951972547758
+      MagicianWalk_36: 6111801530561693900
+      MagicianWalk_37: 5497084366454499203
+      MagicianWalk_4: 138282422504788848
+      MagicianWalk_5: 5929834300988833102
+      MagicianWalk_6: 8996627590261792307
+      MagicianWalk_7: 209348233389609966
+      MagicianWalk_8: -2342699124125364254
+      MagicianWalk_9: 6776858135257936922
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
