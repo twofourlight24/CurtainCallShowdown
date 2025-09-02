@@ -63,7 +63,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         "각 플레이어당 3개의 목숨이 주어지며, 최후의 생존자가 승리합니다.",
         "특정 영역에 오랫동안 머물러 점수가 가장 높은 플레이어가 승리합니다."
     };
-    private string[] mapNames = { "Forest Map", "Desert Map", "Snow Map" }; // 맵 이름은 예시
+    private string[] mapNames = { "BasicMap", "미구현맵", }; // 맵 이름은 예시
     private int selectedModeIndex = 0;
     private int selectedRoundCount = 3;
     private int selectedMapIndex = 0;
@@ -372,7 +372,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         {
             bool allow = (bool)roomProps["AllowDuplication"];
             characterDuplicationText.text = $"캐릭터 중복 선택 {(allow ? "허용" : "제한")}";
-            characterDuplicationInfoText.text = $"단독 중복 {(allow ? "허용" : "제한")}"; // 추가된 InfoText 업데이트
+            characterDuplicationInfoText.text = $"단원 중복 {(allow ? "허용" : "제한")}"; // 추가된 InfoText 업데이트
             characterDuplicationToggle.isOn = allow;
             if (PhotonNetwork.IsMasterClient)
             {

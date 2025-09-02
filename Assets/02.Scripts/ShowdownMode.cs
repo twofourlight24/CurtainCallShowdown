@@ -33,28 +33,81 @@ public class ShowdownMode : MonoBehaviourPunCallbacks
     private void InitializeShowdownMode()
     {
         gameManager.resultPanel.SetActive(false);
-        int playerIndex = 0;
 
-        foreach (var player in PhotonNetwork.PlayerList)
+        // characterPrefabs 배열이 비어있는지 확인
+        if (characterPrefabs == null || characterPrefabs.Length == 0)
         {
-            if (playerIndex < gameManager.spawnPoints.Length)
+            Debug.LogError("Character prefabs array is null or empty. Cannot spawn any characters.");
+            return;
+        }
+
+        // playerInfoPanels의 크기 확인
+        int maxPlayers = gameManager.playerInfoPanels.Length;
+
+        // 현재 방의 모든 플레이어 리스트 가져오기
+        var playerList = PhotonNetwork.PlayerList;
+
+        // 모든 플레이어 정보 패널 비활성화 (초기화)
+        for (int i = 0; i < maxPlayers; i++)
+        {
+            gameManager.playerInfoPanels[i].SetActive(false);
+        }
+
+        // 플레이어 수만큼만 UI 활성화 및 스폰 로직 실행
+        for (int i = 0; i < playerList.Length; i++)
+        {
+            var player = playerList[i];
+
+            // UI 패널 배열의 인덱스 범위를 초과하는지 확인하여 오류 방지
+            if (i >= maxPlayers)
             {
-                // UI 활성화
-                gameManager.playerInfoPanels[playerIndex].SetActive(true);
-                gameManager.playerNicknames[playerIndex].text = player.NickName;
+                Debug.LogError("Player count exceeds the size of player info panels array. Some players will not have UI panels.");
+                break;
+            }
+
+            if (i < gameManager.spawnPoints.Length)
+            {
+                // UI 활성화 및 닉네임 설정
+                gameManager.playerInfoPanels[i].SetActive(true);
+                gameManager.playerNicknames[i].text = player.NickName;
 
                 // 캐릭터 정보 로드 및 스폰
-                int characterIndex = (int)player.CustomProperties["ConfirmedCharacter"];
-                GameObject selectedCharacterPrefab = characterPrefabs[characterIndex];
+                object selectedCharacterIndexObj;
+                int characterIndex = 0;
+                if (player.CustomProperties.TryGetValue("SelectedCharacter", out selectedCharacterIndexObj))
+                {
+                    characterIndex = (int)selectedCharacterIndexObj;
+                }
+                else
+                {
+                    Debug.LogWarning($"Player {player.NickName} did not select a character. Assigning default character.");
+                }
+
+                GameObject selectedCharacterPrefab = null;
+                if (characterIndex >= 0 && characterIndex < characterPrefabs.Length)
+                {
+                    selectedCharacterPrefab = characterPrefabs[characterIndex];
+                }
+                else
+                {
+                    Debug.LogError($"Invalid character index for player {player.NickName}. Assigning default character.");
+                    selectedCharacterPrefab = characterPrefabs[0];
+                }
+
+                // 캐릭터 프리팹이 여전히 유효한지 최종 확인
+                if (selectedCharacterPrefab == null)
+                {
+                    Debug.LogError($"No valid character prefab found for player {player.NickName}. Cannot spawn character.");
+                    continue; // 다음 플레이어로 넘어감
+                }
 
                 // 플레이어의 캐릭터를 네트워크 상에 생성
-                PhotonNetwork.Instantiate(selectedCharacterPrefab.name, gameManager.spawnPoints[playerIndex].position, gameManager.spawnPoints[playerIndex].rotation);
+                PhotonNetwork.Instantiate(selectedCharacterPrefab.name, gameManager.spawnPoints[i].position, gameManager.spawnPoints[i].rotation);
 
                 // 목숨 초기화
                 playerLives[player.NickName] = lifeCount;
                 UpdateLifeUI(player.NickName, lifeCount);
             }
-            playerIndex++;
         }
     }
 

@@ -15,7 +15,6 @@ public class GameManager : MonoBehaviourPunCallbacks
     public GameObject resultPanel;
     public TMP_Text resultText;
     public Transform[] spawnPoints;
-    public GameObject[] characterPrefabs;
 
     [Header("UI - In-Game Info")]
     public GameObject[] playerInfoPanels;
@@ -52,9 +51,22 @@ public class GameManager : MonoBehaviourPunCallbacks
         // 게임 모드에 따라 적절한 스크립트 초기화 및 실행
         if (gameMode == "Showdown")
         {
+            // SelectCharacterManager에서 캐릭터 프리팹 정보를 가져옵니다.
+            SelectCharacterManager selectManager = FindAnyObjectByType<SelectCharacterManager>();
+            if (selectManager == null)
+            {
+                Debug.LogError("SelectCharacterManager를 찾을 수 없습니다. 게임 시작에 실패했습니다.");
+                return;
+            }
+
+            // CharacterData 배열에서 실제 캐릭터 프리팹(GameObject) 배열을 추출
+            GameObject[] characterPrefabsFromSelection = selectManager.allCharacters
+                                                                    .Select(c => c.data.characterPrefab)
+                                                                    .ToArray();
+
             // ShowdownMode 스크립트를 GameManager에 추가하고 참조를 얻습니다.
             currentActiveGameMode = gameObject.AddComponent<ShowdownMode>();
-            currentActiveGameMode.Initialize(this, characterPrefabs);
+            currentActiveGameMode.Initialize(this, characterPrefabsFromSelection);
         }
         else
         {
@@ -95,7 +107,7 @@ public class GameManager : MonoBehaviourPunCallbacks
         }
 
         // Resources 폴더에서 맵 프리팹을 로드하고 생성
-        GameObject mapPrefab = Resources.Load<GameObject>($"Maps/{mapName}");
+        GameObject mapPrefab = Resources.Load<GameObject>(mapName);
         if (mapPrefab != null)
         {
             currentMap = PhotonNetwork.Instantiate(mapPrefab.name, Vector3.zero, Quaternion.identity);

@@ -11,6 +11,7 @@ public class CharacterData : MonoBehaviour
         public string characterName;
         public string characterDescription;
         public Sprite characterIcon;
+        public GameObject characterPrefab;
     }
 
     public PlayerCharacterData data;
