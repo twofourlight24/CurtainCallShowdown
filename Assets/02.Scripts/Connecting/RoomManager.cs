@@ -5,16 +5,18 @@ using Photon.Pun;
 using Photon.Realtime;
 using System.Collections.Generic;
 using ExitGames.Client.Photon;
-using System.Collections; // 추가
+using System.Collections;
 
-// PUN 2의 콜백 인터페이스를 구현하여 Photon 이벤트에 반응
+// This script requires a PhotonView component on the same GameObject.
+// It is essential for sending messages over the network using RPCs.
+[RequireComponent(typeof(PhotonView))]
 public class RoomManager : MonoBehaviourPunCallbacks
 {
     [Header("===== UI - Room Info =====")]
     public TMP_Text roomNameText;
-    public Button leaveButton; // 방 나가기 버튼
+    public Button leaveButton; // Leave Room Button
 
-    // 다른 플레이어들에게 보여지는 게임 설정 정보 UI
+    // UI elements to display game settings to other players
     public TMP_Text gameModeInfoText;
     public TMP_Text gameRoundInfoText;
     public TMP_Text characterDuplicationInfoText;
@@ -22,12 +24,14 @@ public class RoomManager : MonoBehaviourPunCallbacks
     [Header("===== UI - Player List =====")]
     public Transform playerPanel;
     public GameObject playerInfoPrefab;
-    private Dictionary<string, GameObject> playerInfoObjects = new Dictionary<string, GameObject>();
+    private Dictionary<int, GameObject> playerInfoObjects = new Dictionary<int, GameObject>();
 
     [Header("===== UI - Control Buttons =====")]
     public Button startButton;
     public Button readyButton;
     public Button gameSetupButton;
+    // UI for displaying nickname duplication and other warnings
+    public TextMeshProUGUI warningMessageText;
 
     [Header("===== UI - Game Setup Panel =====")]
     public GameObject gameSetupPanel;
@@ -63,23 +67,23 @@ public class RoomManager : MonoBehaviourPunCallbacks
         "각 플레이어당 3개의 목숨이 주어지며, 최후의 생존자가 승리합니다.",
         "특정 영역에 오랫동안 머물러 점수가 가장 높은 플레이어가 승리합니다."
     };
-    private string[] mapNames = { "BasicMap", "미구현맵", }; // 맵 이름은 예시
+    private string[] mapNames = { "BasicMap", "Desert Map", "Snow Map" }; // Example map names
     private int selectedModeIndex = 0;
     private int selectedRoundCount = 3;
     private int selectedMapIndex = 0;
 
     void Start()
     {
-        // 방 이름 설정
+        // Set room name
         roomNameText.text = PhotonNetwork.CurrentRoom.Name;
 
-        // 버튼 이벤트 연결
+        // Connect button events
         startButton.onClick.AddListener(OnStartButtonClicked);
         readyButton.onClick.AddListener(OnReadyButtonClicked);
         gameSetupButton.onClick.AddListener(OnGameSetupButtonClicked);
         gameSetupConfirmButton.onClick.AddListener(OnGameSetupConfirmButtonClicked);
         gameSetupCancelButton.onClick.AddListener(OnGameSetupCancelButtonClicked);
-        leaveButton.onClick.AddListener(OnLeaveButtonClicked); // 방 나가기 버튼 연결
+        leaveButton.onClick.AddListener(OnLeaveButtonClicked);
         prevModeButton.onClick.AddListener(() => OnGameModeChanged(-1));
         nextModeButton.onClick.AddListener(() => OnGameModeChanged(1));
         round3Button.onClick.AddListener(() => OnRoundCountChanged(3));
@@ -87,53 +91,41 @@ public class RoomManager : MonoBehaviourPunCallbacks
         round5Button.onClick.AddListener(() => OnRoundCountChanged(5));
         prevMapButton.onClick.AddListener(() => OnMapChanged(-1));
         nextMapButton.onClick.AddListener(() => OnMapChanged(1));
-
         chatInput.onEndEdit.AddListener(OnChatInputEndEdit);
 
-        // 방장 여부에 따라 UI 활성화/비활성화
-        if (PhotonNetwork.IsMasterClient)
-        {
-            startButton.gameObject.SetActive(true);
-            readyButton.gameObject.SetActive(false);
-            gameSetupButton.gameObject.SetActive(true);
-
-            // 방장만 게임 설정을 초기화하고 다른 플레이어들에게 동기화
-            InitializeGameSettings();
-        }
-        else
-        {
-            startButton.gameObject.SetActive(false);
-            readyButton.gameObject.SetActive(true);
-            gameSetupButton.gameObject.SetActive(false);
-        }
-
+        // Initialize UI
         gameSetupPanel.SetActive(false);
+        if (warningMessageText != null)
+        {
+            warningMessageText.gameObject.SetActive(false);
+        }
 
-        // 모든 플레이어 목록 UI 갱신
+        // Enable/disable UI based on Master Client status
+        CheckMasterClientStatus();
+
+        // Refresh the list of all players
         RefreshPlayerList();
 
-        // 방의 커스텀 속성 업데이트를 수신하기 위한 초기 상태 설정
-        // 이 코드는 현재 방 설정을 즉시 가져와 UI에 반영합니다.
+        // If this client is the Master Client, initialize game settings on room creation.
+        if (PhotonNetwork.IsMasterClient)
+        {
+            InitializeGameSettings();
+        }
+
         UpdateGameSetupUI(PhotonNetwork.CurrentRoom.CustomProperties);
     }
-    private void Update()
-    {
-        if (chatInput.isFocused && Input.GetKeyDown(KeyCode.Return))
-        {
-            string text = chatInput.text;
-            if (!string.IsNullOrEmpty(text))
-            {
-                photonView.RPC("ReceiveChatMessage", RpcTarget.All, PhotonNetwork.LocalPlayer.NickName, text);
-                chatInput.text = "";                  // 입력창 비우기
-                chatInput.ActivateInputField();       // 다시 포커스 주기 (계속 채팅 입력 가능하게)
-            }
-        }
-    }
 
-    // Photon 콜백 함수들
+    // Photon Callback Functions
     public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
     {
         Debug.Log($"플레이어 입장: {newPlayer.NickName}");
+
+        // Check for duplicate nicknames when a new player enters (Master Client only)
+        if (PhotonNetwork.IsMasterClient)
+        {
+            CheckForDuplicateNicknames(newPlayer);
+        }
+
         RefreshPlayerList();
     }
 
@@ -142,7 +134,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         Debug.Log($"플레이어 퇴장: {otherPlayer.NickName}");
         RefreshPlayerList();
 
-        // 방장이 나가면 새로운 방장에게 권한 위임
+        // If the Master Client leaves, a new one is designated
         if (otherPlayer.IsMasterClient)
         {
             Debug.Log("이전 방장이 나갔습니다. 새로운 방장이 설정됩니다.");
@@ -152,63 +144,102 @@ public class RoomManager : MonoBehaviourPunCallbacks
 
     public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable propertiesThatChanged)
     {
-        // 방 설정이 변경될 때마다 UI를 업데이트합니다.
+        // Update UI when room settings change
         UpdateGameSetupUI(propertiesThatChanged);
     }
 
     public override void OnLeftRoom()
     {
-        // 방을 나갔을 때 로비 씬으로 이동
-        PhotonNetwork.LoadLevel("WatingRoomScene");
+        // Load the LobbyScene when leaving the room
+        PhotonNetwork.LoadLevel("LobbyScene");
     }
 
     public override void OnPlayerPropertiesUpdate(Photon.Realtime.Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
     {
-        // 플레이어의 준비 상태가 변경되면 UI를 업데이트합니다.
+        // Update UI if the player's ready state changes
         if (changedProps.ContainsKey("IsReady"))
         {
-            if (playerInfoObjects.ContainsKey(targetPlayer.NickName))
+            if (playerInfoObjects.ContainsKey(targetPlayer.ActorNumber))
             {
-                playerInfoObjects[targetPlayer.NickName].GetComponent<PlayerInfo>().SetReadyState((bool)changedProps["IsReady"]);
+                playerInfoObjects[targetPlayer.ActorNumber].GetComponent<PlayerInfo>().SetReadyState((bool)changedProps["IsReady"]);
             }
         }
 
-        // 모든 플레이어가 준비되었는지 확인 (방장만)
+        // Check if all players are ready (Master Client only)
         if (PhotonNetwork.IsMasterClient)
         {
             CheckAllPlayersReady();
         }
     }
 
-    // --- Player & Room Management Logic ---
+    // Check for duplicate nicknames
+    private void CheckForDuplicateNicknames(Photon.Realtime.Player newPlayer)
+    {
+        // Check other players except the newly joined player
+        foreach (var player in PhotonNetwork.PlayerList)
+        {
+            if (player.ActorNumber != newPlayer.ActorNumber && player.NickName == newPlayer.NickName)
+            {
+                Debug.LogWarning($"닉네임 '{newPlayer.NickName}'이 이미 존재합니다. 새로 들어온 플레이어를 추방합니다.");
 
-    /// <summary>
-    /// 현재 방의 모든 플레이어 목록 UI를 갱신합니다.
-    /// </summary>
+                // Use RPC to send a warning message to the kicked player
+                if (photonView != null)
+                {
+                    photonView.RPC("ShowDuplicateNicknameWarning", newPlayer);
+                }
+
+                return; // Exit the function after calling the RPC
+            }
+        }
+    }
+
+    [PunRPC]
+    public void ShowDuplicateNicknameWarning()
+    {
+        Debug.Log("닉네임 중복 경고 메시지를 받았습니다.");
+        // The client who received the RPC leaves the room
+        StartCoroutine(ShowWarningAndLeaveRoom("이미 존재하는 닉네임입니다. 다른 닉네임으로 다시 시도해주세요."));
+    }
+
+    private IEnumerator ShowWarningAndLeaveRoom(string message)
+    {
+        if (warningMessageText != null)
+        {
+            warningMessageText.text = message;
+            warningMessageText.gameObject.SetActive(true);
+            warningMessageText.CrossFadeAlpha(1, 0, false);
+            yield return new WaitForSeconds(2f);
+            warningMessageText.CrossFadeAlpha(0, 1f, false);
+        }
+        else
+        {
+            yield return new WaitForSeconds(2f);
+        }
+
+        PhotonNetwork.LeaveRoom(); // Client leaves the room directly
+    }
+
     private void RefreshPlayerList()
     {
-        // 기존 플레이어 UI 삭제
+        // Delete existing player UI
         foreach (var infoObject in playerInfoObjects.Values)
         {
             Destroy(infoObject);
         }
         playerInfoObjects.Clear();
 
-        // 새로운 플레이어 UI 생성
+        // Create new player UI
         foreach (var player in PhotonNetwork.PlayerList)
         {
             GameObject playerObj = Instantiate(playerInfoPrefab, playerPanel);
             PlayerInfo info = playerObj.GetComponent<PlayerInfo>();
             info.Setup(player);
-            playerInfoObjects[player.NickName] = playerObj;
+            playerInfoObjects[player.ActorNumber] = playerObj;
         }
 
         CheckAllPlayersReady();
     }
 
-    /// <summary>
-    /// 현재 플레이어의 방장 상태를 확인하고 UI를 갱신합니다.
-    /// </summary>
     private void CheckMasterClientStatus()
     {
         if (PhotonNetwork.IsMasterClient)
@@ -216,57 +247,57 @@ public class RoomManager : MonoBehaviourPunCallbacks
             startButton.gameObject.SetActive(true);
             readyButton.gameObject.SetActive(false);
             gameSetupButton.gameObject.SetActive(true);
-            // 새로운 방장이 된 후 기존의 방 설정을 UI에 로드
+            // Load existing room settings into the UI after becoming the new Master Client
             UpdateGameSetupUI(PhotonNetwork.CurrentRoom.CustomProperties);
+            CheckAllPlayersReady(); // Re-check ready status when the Master Client changes
         }
         else
         {
             startButton.gameObject.SetActive(false);
             readyButton.gameObject.SetActive(true);
             gameSetupButton.gameObject.SetActive(false);
-            // 일반 플레이어는 방장이 설정한 정보를 확인
+            // Non-master clients just view the settings set by the master client
             UpdateGameSetupUI(PhotonNetwork.CurrentRoom.CustomProperties);
         }
     }
 
-    // --- Ready & Start Button Logic ---
-
-    /// <summary>
-    /// '준비' 버튼 클릭 시 호출됩니다.
-    /// </summary>
     public void OnReadyButtonClicked()
     {
-        // 준비 상태를 플레이어 커스텀 속성에 저장하고 동기화합니다.
-        ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable();
-        // CustomProperties에 "IsReady" 키가 없으면 false로 초기화
-        bool isReady = PhotonNetwork.LocalPlayer.CustomProperties.ContainsKey("IsReady") ? !(bool)PhotonNetwork.LocalPlayer.CustomProperties["IsReady"] : true;
-        props.Add("IsReady", isReady);
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        if (PhotonNetwork.LocalPlayer != null)
+        {
+            ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable();
+            bool isReady = PhotonNetwork.LocalPlayer.CustomProperties.ContainsKey("IsReady") ? !(bool)PhotonNetwork.LocalPlayer.CustomProperties["IsReady"] : true;
+            props.Add("IsReady", isReady);
+            PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        }
+        else
+        {
+            Debug.LogError("로컬 플레이어 정보가 아직 로드되지 않았습니다.");
+        }
     }
 
-    /// <summary>
-    /// 방장이 '시작' 버튼 클릭 시 호출됩니다.
-    /// </summary>
     public void OnStartButtonClicked()
     {
         if (CheckAllPlayersReady())
         {
-            // 게임 시작
-            PhotonNetwork.LoadLevel("GameScene");
+            PhotonNetwork.LoadLevel("SelectCharacterScene");
         }
         else
         {
-            Debug.Log("모든 플레이어가 준비되지 않았습니다!");
-            // TODO: 사용자에게 "모든 플레이어가 준비되어야 게임을 시작할 수 있습니다"와 같은 메시지를 띄우는 UI 추가
+            Debug.Log("모든 플레이어가 준비되지 않았거나 플레이어 수가 부족합니다!");
+            StartCoroutine(ShowWarningMessage("모든 플레이어(최소 2명)가 준비되어야 게임을 시작할 수 있습니다."));
         }
     }
 
-    /// <summary>
-    /// 모든 플레이어가 준비 상태인지 확인합니다.
-    /// </summary>
-    /// <returns>모든 플레이어가 준비되었으면 true, 아니면 false</returns>
     private bool CheckAllPlayersReady()
     {
+        // Check for minimum number of players (2)
+        if (PhotonNetwork.PlayerList.Length < 2)
+        {
+            startButton.interactable = false;
+            return false;
+        }
+
         foreach (var player in PhotonNetwork.PlayerList)
         {
             if (!player.IsMasterClient)
@@ -279,35 +310,24 @@ public class RoomManager : MonoBehaviourPunCallbacks
                 }
             }
         }
-        startButton.interactable = true; // 모든 플레이어가 준비되면 시작 버튼 활성화
+        startButton.interactable = true;
         return true;
     }
 
-    /// <summary>
-    /// '방 나가기' 버튼 클릭 시 호출됩니다.
-    /// </summary>
     public void OnLeaveButtonClicked()
     {
-        // 현재 방을 나갑니다.
         PhotonNetwork.LeaveRoom();
     }
 
-    // --- Game Setup Panel Logic ---
-
-    /// <summary>
-    /// '게임 설정' 버튼 클릭 시 호출됩니다.
-    /// </summary>
     public void OnGameSetupButtonClicked()
     {
         gameSetupPanel.SetActive(true);
     }
 
-    /// <summary>
-    /// 게임 설정 값을 초기화하고 방 커스텀 속성에 저장합니다.
-    /// 방장만 호출합니다.
-    /// </summary>
     private void InitializeGameSettings()
     {
+        if (PhotonNetwork.CurrentRoom == null) return;
+
         ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable
         {
             {"GameMode", gameModes[selectedModeIndex]},
@@ -318,9 +338,6 @@ public class RoomManager : MonoBehaviourPunCallbacks
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
     }
 
-    /// <summary>
-    /// '확인' 버튼 클릭 시 호출됩니다.
-    /// </summary>
     public void OnGameSetupConfirmButtonClicked()
     {
         ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable
@@ -334,45 +351,35 @@ public class RoomManager : MonoBehaviourPunCallbacks
         gameSetupPanel.SetActive(false);
     }
 
-    /// <summary>
-    /// '돌아가기' 버튼 클릭 시 호출됩니다.
-    /// </summary>
     public void OnGameSetupCancelButtonClicked()
     {
         gameSetupPanel.SetActive(false);
-        // 패널을 닫을 때 원래 설정으로 UI 복구
         UpdateGameSetupUI(PhotonNetwork.CurrentRoom.CustomProperties);
     }
 
-    /// <summary>
-    /// 방 설정이 변경될 때마다 UI를 업데이트합니다. (모든 플레이어)
-    /// </summary>
     private void UpdateGameSetupUI(ExitGames.Client.Photon.Hashtable roomProps)
     {
-        // 게임 모드 업데이트
         if (roomProps.ContainsKey("GameMode"))
         {
             string mode = (string)roomProps["GameMode"];
             gameModeText.text = mode;
-            gameModeInfoText.text = mode; // 추가된 InfoText 업데이트
+            gameModeInfoText.text = mode;
             selectedModeIndex = System.Array.IndexOf(gameModes, mode);
             gameModeGuideText.text = gameModeDescriptions[selectedModeIndex];
         }
 
-        // 라운드 수 업데이트
         if (roomProps.ContainsKey("RoundCount"))
         {
             selectedRoundCount = (int)roomProps["RoundCount"];
             gameRoundText.text = $"{selectedRoundCount} 라운드";
-            gameRoundInfoText.text = $"{selectedRoundCount} 라운드"; // 추가된 InfoText 업데이트
+            gameRoundInfoText.text = $"{selectedRoundCount} 라운드";
         }
 
-        // 캐릭터 중복 허용 업데이트
         if (roomProps.ContainsKey("AllowDuplication"))
         {
             bool allow = (bool)roomProps["AllowDuplication"];
             characterDuplicationText.text = $"캐릭터 중복 선택 {(allow ? "허용" : "제한")}";
-            characterDuplicationInfoText.text = $"단원 중복 {(allow ? "허용" : "제한")}"; // 추가된 InfoText 업데이트
+            characterDuplicationInfoText.text = $"단원 중복 {(allow ? "허용" : "제한")}";
             characterDuplicationToggle.isOn = allow;
             if (PhotonNetwork.IsMasterClient)
             {
@@ -380,21 +387,17 @@ public class RoomManager : MonoBehaviourPunCallbacks
             }
             else
             {
-                // 일반 플레이어에게는 토글 UI를 비활성화하고 텍스트만 보여줌
                 characterDuplicationToggle.gameObject.SetActive(false);
             }
         }
 
-        // 맵 업데이트
         if (roomProps.ContainsKey("MapName"))
         {
             string map = (string)roomProps["MapName"];
             mapText.text = map;
             selectedMapIndex = System.Array.IndexOf(mapNames, map);
-            // TODO: mapImage.sprite = ... 로 실제 맵 이미지 업데이트 로직 추가
         }
 
-        // 방장만 설정 변경 버튼 활성화
         prevModeButton.gameObject.SetActive(PhotonNetwork.IsMasterClient);
         nextModeButton.gameObject.SetActive(PhotonNetwork.IsMasterClient);
         prevMapButton.gameObject.SetActive(PhotonNetwork.IsMasterClient);
@@ -404,10 +407,6 @@ public class RoomManager : MonoBehaviourPunCallbacks
         round5Button.gameObject.SetActive(PhotonNetwork.IsMasterClient);
     }
 
-    /// <summary>
-    /// 게임 모드 변경 버튼 클릭 시 호출됩니다.
-    /// </summary>
-    /// <param name="change">변경량 (-1: 이전, 1: 다음)</param>
     public void OnGameModeChanged(int change)
     {
         selectedModeIndex = (selectedModeIndex + change + gameModes.Length) % gameModes.Length;
@@ -415,47 +414,30 @@ public class RoomManager : MonoBehaviourPunCallbacks
         gameModeGuideText.text = gameModeDescriptions[selectedModeIndex];
     }
 
-    /// <summary>
-    /// 라운드 수 변경 버튼 클릭 시 호출됩니다.
-    /// </summary>
-    /// <param name="round">설정할 라운드 수</param>
     public void OnRoundCountChanged(int round)
     {
         selectedRoundCount = round;
         gameRoundText.text = $"{selectedRoundCount} 라운드";
     }
 
-    /// <summary>
-    /// 맵 변경 버튼 클릭 시 호출됩니다.
-    /// </summary>
-    /// <param name="change">변경량 (-1: 이전, 1: 다음)</param>
     public void OnMapChanged(int change)
     {
         selectedMapIndex = (selectedMapIndex + change + mapNames.Length) % mapNames.Length;
         mapText.text = mapNames[selectedMapIndex];
-        // TODO: mapImage.sprite = ... 로 실제 맵 이미지 업데이트 로직 추가
     }
 
-    // --- Chat Logic ---
-
-    /// <summary>
-    /// 채팅 입력 필드에서 Enter 키 입력 시 호출됩니다.
-    /// </summary>
-    /// <param name="text">입력된 텍스트</param>
     public void OnChatInputEndEdit(string text)
     {
         if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
         {
             if (!string.IsNullOrEmpty(text))
             {
-                // RPC를 통해 모든 플레이어에게 채팅 메시지 전송
                 photonView.RPC("ReceiveChatMessage", RpcTarget.All, PhotonNetwork.LocalPlayer.NickName, text);
-                chatInput.text = ""; // 입력 필드 초기화
-                chatInput.ActivateInputField(); // 다시 입력 필드 활성화
+                chatInput.text = "";
+                chatInput.ActivateInputField();
             }
         }
     }
-
 
     [PunRPC]
     public void ReceiveChatMessage(string senderName, string message)
@@ -464,7 +446,6 @@ public class RoomManager : MonoBehaviourPunCallbacks
         TMP_Text chatText = chatMsgObj.GetComponent<TMP_Text>();
         chatText.text = $"<color=yellow>{senderName}</color>: {message}";
 
-        // 스크롤을 맨 아래로
         LayoutRebuilder.ForceRebuildLayoutImmediate(chatContent.GetComponent<RectTransform>());
         StartCoroutine(ScrollToBottom());
     }
@@ -473,5 +454,18 @@ public class RoomManager : MonoBehaviourPunCallbacks
     {
         yield return new WaitForEndOfFrame();
         chatScrollRect.verticalNormalizedPosition = 0f;
+    }
+
+    // This coroutine is added again as 'ShowWarningMessage'
+    private IEnumerator ShowWarningMessage(string message)
+    {
+        if (warningMessageText != null)
+        {
+            warningMessageText.text = message;
+            warningMessageText.gameObject.SetActive(true);
+            warningMessageText.CrossFadeAlpha(1, 0, false);
+            yield return new WaitForSeconds(2f);
+            warningMessageText.CrossFadeAlpha(0, 1f, false);
+        }
     }
 }

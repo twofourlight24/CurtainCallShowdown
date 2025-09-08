@@ -22,7 +22,7 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
     public Transform roomListParent;
     public GameObject roomButtonPrefab;
     public Button refreshButton;  // 방 갱신 버튼
-    public Button backButton;     // 되돌아가기 버튼
+    public Button backButton;    // 되돌아가기 버튼
 
     [Header("===== UI - 입장 판넬 =====")]
     public GameObject joinPanel;
@@ -42,7 +42,7 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
         PhotonNetwork.AutomaticallySyncScene = true;
 
         passwordToggle.onValueChanged.AddListener(OnPasswordToggleChanged);
-        createRoomButton.onClick.AddListener(CreateRoom); // 버튼 클릭 연결
+        createRoomButton.onClick.AddListener(CreateRoom);
         passwordInput.gameObject.SetActive(false);
         joinPanel.SetActive(false);
         warningPasswordText.gameObject.SetActive(false);
@@ -64,6 +64,15 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
         Debug.Log("로비 입장 완료!");
         ClearRoomListUI();
     }
+
+    // 추가: 방 입장 실패 시 콜백 처리
+    public override void OnJoinRoomFailed(short returnCode, string message)
+    {
+        Debug.LogError($"방 입장 실패: {message}");
+        StartCoroutine(ShowGuideText($"방 입장 실패: {message}"));
+        // 실패 시 입장 판넬을 닫습니다.
+        joinPanel.SetActive(false);
+    }
     #endregion
 
     #region ===== 방 생성 =====
@@ -80,9 +89,9 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
             return;
         }
 
-        if (string.IsNullOrEmpty(nickname))
+        if (string.IsNullOrEmpty(nickname) || nickname.Length > 10) // 닉네임 길이 제한 추가
         {
-            StartCoroutine(ShowGuideText("닉네임을 입력해주세요"));
+            StartCoroutine(ShowGuideText("닉네임은 1-10자로 입력해주세요"));
             return;
         }
 
@@ -183,10 +192,10 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
     private void TryJoinSelectedRoom()
     {
         string nickname = nicknameInput.text.Trim();
-        if (string.IsNullOrEmpty(nickname))
+        if (string.IsNullOrEmpty(nickname) || nickname.Length > 10) // 닉네임 길이 제한 추가
         {
             joinPanel.SetActive(false);
-            StartCoroutine(ShowGuideText("닉네임을 입력해주세요"));
+            StartCoroutine(ShowGuideText("닉네임은 1-10자로 입력해주세요"));
             return;
         }
         PhotonNetwork.NickName = nickname; // 닉네임 설정
@@ -228,22 +237,18 @@ public class ConnectionManager : MonoBehaviourPunCallbacks
     {
         guideText.text = message;
         guideText.gameObject.SetActive(true);
+        guideText.CrossFadeAlpha(1, 0, false);
         yield return new WaitForSeconds(2f);
         guideText.CrossFadeAlpha(0, 1f, false);
-        yield return new WaitForSeconds(1f);
-        guideText.CrossFadeAlpha(1, 0f, false);
-        guideText.gameObject.SetActive(false);
     }
 
     IEnumerator ShowWarningPassword(string message)
     {
         warningPasswordText.text = message;
         warningPasswordText.gameObject.SetActive(true);
+        warningPasswordText.CrossFadeAlpha(1, 0, false);
         yield return new WaitForSeconds(2f);
         warningPasswordText.CrossFadeAlpha(0, 1f, false);
-        yield return new WaitForSeconds(1f);
-        warningPasswordText.CrossFadeAlpha(1, 0f, false);
-        warningPasswordText.gameObject.SetActive(false);
     }
 
     void OnPasswordToggleChanged(bool isOn)

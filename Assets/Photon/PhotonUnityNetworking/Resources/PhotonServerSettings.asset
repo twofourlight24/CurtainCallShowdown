@@ -43,6 +43,8 @@ MonoBehaviour:
   - OnRoundEnd
   - SelectCharacter
   - StartShowdown
+  - ShowDuplicateNicknameWarning
+  - RPC_OnMapInstantiated
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1
