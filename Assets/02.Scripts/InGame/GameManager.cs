@@ -1,12 +1,13 @@
-﻿using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
+﻿using ExitGames.Client.Photon;
 using Photon.Pun;
 using Photon.Realtime;
-using System.Collections.Generic;
-using ExitGames.Client.Photon;
-using System.Linq;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using TMPro;
+using UnityEngine;
+using UnityEngine.TextCore.Text;
+using UnityEngine.UI;
 
 // 게임 전체를 관리하는 스크립트
 public class GameManager : MonoBehaviourPunCallbacks
@@ -317,9 +318,10 @@ public class GameManager : MonoBehaviourPunCallbacks
         if (characterObject == null) return;
 
         CharacterBase character = characterObject.GetComponent<CharacterBase>();
-        CharacterData characterData = characterObject.GetComponent<CharacterData>();
 
-        uiManager.UpdatePlayerUI(targetPlayer, character, characterData);
+        CharacterData.PlayerCharacterData characterData = characterObject.GetComponent<CharacterData>().data;
+
+        uiManager.UpdatePlayerUI(targetPlayer, character, characterObject.GetComponent<CharacterData>());
     }
 
     public IEnumerator RespawnPlayer(Photon.Realtime.Player player)
