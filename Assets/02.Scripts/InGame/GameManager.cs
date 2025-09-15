@@ -226,15 +226,13 @@ public class GameManager : MonoBehaviourPunCallbacks
         }
 
         object selectedCharacterNameObj;
-        string characterPrefabName = string.Empty;
-
         if (!localPlayer.CustomProperties.TryGetValue("SelectedCharacterName", out selectedCharacterNameObj))
         {
             Debug.LogError($"플레이어 {localPlayer.NickName}의 SelectedCharacterName이 설정되어 있지 않습니다.");
             return;
         }
 
-        characterPrefabName = (string)selectedCharacterNameObj;
+        string characterPrefabName = (string)selectedCharacterNameObj;
         if (string.IsNullOrEmpty(characterPrefabName) || !characterPrefabs.ContainsKey(characterPrefabName))
         {
             Debug.LogError($"플레이어 {localPlayer.NickName}의 유효하지 않은 캐릭터 프리팹 이름: {characterPrefabName}");
@@ -258,12 +256,32 @@ public class GameManager : MonoBehaviourPunCallbacks
             }
 
             playerCharacters[localPlayer.NickName] = characterObject;
-            playersSpawned[localPlayer.NickName] = true; // ✅ 스폰 완료 체크
-            UpdatePlayerUI(localPlayer);
+            playersSpawned[localPlayer.NickName] = true;
+
+            // 모든 플레이어 UI 갱신
+            RefreshAllPlayerUI();
+            uiManager.RefreshAllPlayerUI(playerCharacters);
+
         }
         else
         {
             Debug.LogError("[GameManager] PhotonNetwork.Instantiate가 null을 반환했습니다: " + characterPrefabName);
+        }
+    }
+
+    //  모든 플레이어의 UI를 갱신하는 함수
+    private void RefreshAllPlayerUI()
+    {
+        foreach (var p in PhotonNetwork.PlayerList)
+        {
+            if (playerCharacters.ContainsKey(p.NickName))
+            {
+                GameObject obj = playerCharacters[p.NickName];
+                if (obj != null)
+                {
+                    uiManager.UpdatePlayerUI(p, obj.GetComponent<CharacterBase>(), obj.GetComponent<CharacterData>());
+                }
+            }
         }
     }
 

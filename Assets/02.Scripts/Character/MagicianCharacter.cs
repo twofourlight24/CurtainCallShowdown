@@ -1,24 +1,174 @@
 using UnityEngine;
+using Photon.Pun;
+using System.Collections;
 
 public class MagicianCharacter : CharacterBase
 {
-    [Header("Magician Character Properties")]
-    public float AttackDamage = 15f;
+    [Header("Magician Attack Properties")]
+    public Transform ShootPos; // 카드를 발사할 위치
+    public GameObject cardPrefab; // 발사할 카드 프리팹
+    public float cardSpeed = 20f; // 카드의 속도
+    public float attackRange = 10f; // 카드의 사거리
 
+    [Header("Magician Guard Properties")]
+    public float shieldScaleDecrease = 0.3f; // 가드 시 쉴드 크기 감소량
+    public float minShieldScale = 0.1f; // 쉴드가 파괴되는 최소 크기
+    public float shieldRegenTime = 2.0f; // 쉴드 재생성 시간
+    private Vector3 initialShieldScale;
+
+    private bool isGuarding = false;
+
+    new void Start()
+    {
+        // CharacterBase의 Start() 함수를 먼저 호출
+        base.Start();
+
+        // 쉴드 오브젝트의 초기 크기 저장
+        if (ShieldObject != null)
+        {
+            initialShieldScale = ShieldObject.transform.localScale;
+        }
+    }
+
+    void Update()
+    {
+        // 로컬 플레이어만 입력을 받습니다.
+        if (photonView.IsMine)
+        {
+            // 가드 (K 키) - 키를 누르는 동안만 작동
+            if (Input.GetKey(KeyCode.K))
+            {
+                if (!isGuarding)
+                {
+                    isGuarding = true;
+                    // 가드 시작 로직
+                    StartGuard();
+                }
+                UpdateGuard();
+            }
+            else if (isGuarding)
+            {
+                // 가드 종료 로직
+                isGuarding = false;
+                EndGuard();
+            }
+        }
+    }
+
+    private void StartGuard()
+    {
+        Debug.Log("마술사 캐릭터의 가드 시작!");
+        if (ShieldObject != null)
+        {
+            // 가드 시작 시 쉴드 활성화
+            ShieldObject.SetActive(true);
+        }
+    }
+
+    private void UpdateGuard()
+    {
+        if (ShieldObject != null)
+        {
+            // 쉴드 크기 감소
+            Vector3 newScale = ShieldObject.transform.localScale - new Vector3(shieldScaleDecrease, shieldScaleDecrease, 0) * Time.deltaTime;
+            ShieldObject.transform.localScale = newScale;
+
+            // 쉴드 파괴 조건
+            if (newScale.x <= minShieldScale)
+            {
+                BreakShield();
+            }
+        }
+    }
+
+    private void EndGuard()
+    {
+        Debug.Log("마술사 캐릭터의 가드 종료!");
+        if (ShieldObject != null)
+        {
+            ShieldObject.SetActive(false);
+        }
+    }
+
+    private void BreakShield()
+    {
+        Debug.Log("쉴드 파괴! 2초간 이동 불가!");
+        // 쉴드 파괴 시 비활성화 및 이동 불가 상태로 전환
+        ShieldObject.SetActive(false);
+        isGuarding = false; // 가드 상태를 즉시 종료
+        StartCoroutine(ImmobilizeCharacter());
+
+        // 2초 뒤 쉴드 재생성 코루틴 시작
+        StartCoroutine(RegenerateShield());
+    }
+
+    private IEnumerator RegenerateShield()
+    {
+        yield return new WaitForSeconds(shieldRegenTime);
+        Debug.Log("쉴드 재생성!");
+        if (ShieldObject != null)
+        {
+            ShieldObject.transform.localScale = initialShieldScale;
+        }
+    }
+
+    /// <summary>
+    /// 공격 행동을 재정의합니다.
+    /// ShootPos 위치에서 카드를 발사합니다.
+    /// </summary>
     public override void Attack()
     {
         Debug.Log("마술사 캐릭터의 강한 공격!");
-        // 공격 로직 (예: 데미지 처리) 추가
+        if (cardPrefab != null && ShootPos != null)
+        {
+            // 네트워크로 발사체 생성
+            GameObject card = PhotonNetwork.Instantiate(cardPrefab.name, ShootPos.position, ShootPos.rotation);
+
+            // Projectile 스크립트에 필요한 정보 전달
+            Projectile projectile = card.GetComponent<Projectile>();
+            if (projectile != null)
+            {
+                // 발사 방향은 캐릭터의 현재 방향을 따름
+                float direction = isFacingRight ? 1f : -1f;
+                projectile.Initialize(transform.position, new Vector2(direction, 0f), cardSpeed, attackRange);
+            }
+        }
     }
 
-    // 스킬 행동 재정의 (오버라이드)
+    /// <summary>
+    /// 가드 행동을 재정의합니다.
+    /// 이 함수는 PlayerInput에서 K 키를 누를 때마다 호출되므로,
+    /// 실제 로직은 Update()에서 관리합니다.
+    /// </summary>
+    public override void Guard()
+    {
+        // Update()에서 가드 로직을 처리하므로 이 함수는 비워둡니다.
+    }
+
+    /// <summary>
+    /// 스킬 행동을 재정의합니다.
+    /// </summary>
     public override void UseSkill()
     {
         Debug.Log("마술사 캐릭터의 스킬 사용!");
+        // 마술사 고유의 스킬 로직 추가
     }
 
-    public override void Guard()
+    /// <summary>
+    /// 쉴드 콜라이더에 다른 오브젝트가 닿았을 때 호출됩니다.
+    /// </summary>
+    private void OnTriggerEnter2D(Collider2D other)
     {
-        Debug.Log("마술사 캐릭터의 가드!");
-    }   
+        // 'Card' 태그를 가진 오브젝트에 맞았을 때
+        if (other.CompareTag("Card"))
+        {
+            // 내 쉴드 오브젝트가 활성화되어 있는 상태에서만 카드 제거
+            if (ShieldObject != null && ShieldObject.activeSelf)
+            {
+                Debug.Log("가드로 카드 발사체 방어!");
+                // 발사체 파괴
+                PhotonNetwork.Destroy(other.gameObject);
+            }
+        }
+    }
 }

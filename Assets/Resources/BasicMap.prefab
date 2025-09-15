@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 9142720563133317643}
   m_Layer: 0
   m_Name: "BasicMapImage - \uBCF5\uC0AC\uBCF8_0"
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -235,7 +235,7 @@ GameObject:
   - component: {fileID: 1892389753064081862}
   m_Layer: 0
   m_Name: "BasicMap\uBC1C\uD310_0 (4)"
-  m_TagString: Untagged
+  m_TagString: Platform
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -389,7 +389,7 @@ GameObject:
   - component: {fileID: 1622865628118825250}
   m_Layer: 0
   m_Name: "BasicMap\uBC1C\uD310_0 (3)"
-  m_TagString: Untagged
+  m_TagString: Platform
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -543,7 +543,7 @@ GameObject:
   - component: {fileID: 8474611212472578921}
   m_Layer: 0
   m_Name: "BasicMap\uBC1C\uD310_0 (8)"
-  m_TagString: Untagged
+  m_TagString: Platform
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -697,7 +697,7 @@ GameObject:
   - component: {fileID: 8252979390666867441}
   m_Layer: 0
   m_Name: "BasicMap\uBC1C\uD310_0"
-  m_TagString: Untagged
+  m_TagString: Platform
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1012,7 +1012,7 @@ GameObject:
   - component: {fileID: 6109348067065077797}
   m_Layer: 0
   m_Name: "BasicMap\uBC1C\uD310_0 (1)"
-  m_TagString: Untagged
+  m_TagString: Platform
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1166,7 +1166,7 @@ GameObject:
   - component: {fileID: 6589214275977871963}
   m_Layer: 0
   m_Name: "BasicMap\uBC1C\uD310_0 (6)"
-  m_TagString: Untagged
+  m_TagString: Platform
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1438,7 +1438,7 @@ GameObject:
   - component: {fileID: 4229149517642427320}
   m_Layer: 0
   m_Name: "BasicMap\uBC1C\uD310_0 (7)"
-  m_TagString: Untagged
+  m_TagString: Platform
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

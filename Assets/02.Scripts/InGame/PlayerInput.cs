@@ -1,7 +1,6 @@
 using UnityEngine;
 using Photon.Pun; // Photon.Pun 네임스페이스 추가
 
-// 플레이어 입력을 처리하고 행동을 결정하는 스크립트
 public class PlayerInput : MonoBehaviourPun
 {
     // 입력에 따라 호출할 델리게이트 (이벤트)
@@ -13,18 +12,15 @@ public class PlayerInput : MonoBehaviourPun
     public event OnAction onGuard;
     public event OnAction onSkill;
 
-    // 현재 제어할 캐릭터
     public CharacterBase controlledCharacter;
 
     void Update()
     {
-        // 핵심: 로컬 플레이어만 입력을 처리하도록 보장
         if (photonView.IsMine)
         {
-            // WASD 또는 방향키 입력
             float h = Input.GetAxis("Horizontal");
             float v = Input.GetAxis("Vertical");
-            Vector3 moveDirection = new Vector3(h, 0f, v).normalized;
+            Vector3 moveDirection = new Vector3(h, v, 0f).normalized;
 
             if (controlledCharacter != null)
             {
@@ -49,12 +45,30 @@ public class PlayerInput : MonoBehaviourPun
                 }
             }
 
-            // 스킬 (L 키, 예시)
+            // 스킬 (L 키)
             if (Input.GetKeyDown(KeyCode.L))
             {
                 if (controlledCharacter != null)
                 {
                     controlledCharacter.UseSkill();
+                }
+            }
+
+            // 점프 (스페이스바)
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                if (controlledCharacter != null)
+                {
+                    controlledCharacter.Jump();
+                }
+            }
+
+            // 아래 방향키로 발판 통과
+            if (Input.GetKeyDown(KeyCode.DownArrow))
+            {
+                if (controlledCharacter != null)
+                {
+                    controlledCharacter.DropThroughPlatform();
                 }
             }
         }

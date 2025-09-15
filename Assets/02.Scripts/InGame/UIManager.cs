@@ -1,8 +1,9 @@
-using UnityEngine;
-using TMPro;
-using UnityEngine.UI;
 using Photon.Pun;
+using System.Collections.Generic;
 using System.Linq;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// 인게임 UI를 관리하는 스크립트.
@@ -40,24 +41,47 @@ public class UIManager : MonoBehaviourPunCallbacks
     /// <param name="characterData">플레이어 캐릭터의 CharacterData 컴포넌트</param>
     public void UpdatePlayerUI(Photon.Realtime.Player targetPlayer, CharacterBase character, CharacterData characterData)
     {
+        // 현재 룸에서 플레이어 순서대로 인덱스 찾기
         int playerIndex = System.Array.FindIndex(PhotonNetwork.PlayerList, p => p == targetPlayer);
 
-        if (playerIndex != -1 && character != null)
+        if (playerIndex == -1) return; // 못 찾으면 종료
+
+        if (character != null)
         {
-            // 체력바 업데이트 (Image fillAmount 사용)
+            // 체력바 업데이트 (Image.fillAmount 사용)
             playerHpBars[playerIndex].fillAmount = character.CurHp / character.MaxHp;
+        }
 
-            // 캐릭터 아이콘 업데이트
-            if (characterData != null && playerIcons[playerIndex] != null)
+        // 캐릭터 아이콘 업데이트
+        if (characterData != null && playerIcons[playerIndex] != null)
+        {
+            playerIcons[playerIndex].sprite = characterData.data.characterIcon;
+        }
+
+        // 닉네임 업데이트
+        playerNicknames[playerIndex].text = targetPlayer.NickName;
+
+        // 해당 패널 활성화
+        playerInfoPanels[playerIndex].SetActive(true);
+    }
+    public void RefreshAllPlayerUI(Dictionary<string, GameObject> playerCharacters)
+    {
+        // 모든 패널 비활성화
+        for (int i = 0; i < playerInfoPanels.Length; i++)
+        {
+            playerInfoPanels[i].SetActive(false);
+        }
+
+        // 현재 방 플레이어 전부 UI 세팅
+        for (int i = 0; i < PhotonNetwork.PlayerList.Length; i++)
+        {
+            var player = PhotonNetwork.PlayerList[i];
+            if (playerCharacters.TryGetValue(player.NickName, out GameObject characterObj) && characterObj != null)
             {
-                playerIcons[playerIndex].sprite = characterData.data.characterIcon;
+                CharacterBase character = characterObj.GetComponent<CharacterBase>();
+                CharacterData characterData = characterObj.GetComponent<CharacterData>();
+                UpdatePlayerUI(player, character, characterData);
             }
-
-            // 닉네임 업데이트
-            playerNicknames[playerIndex].text = targetPlayer.NickName;
-
-            // 패널 활성화
-            playerInfoPanels[playerIndex].SetActive(true);
         }
     }
 

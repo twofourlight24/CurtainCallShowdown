@@ -1,64 +1,90 @@
 using UnityEngine;
 using Photon.Pun;
 using System.Collections.Generic;
+using System.Collections;
 
 /// <summary>
-/// ¸ğµç ÇÃ·¹ÀÌ¾î Ä³¸¯ÅÍÀÇ ±âº»ÀÌ µÇ´Â Ãß»ó Å¬·¡½º.
-/// °øÅë ¼Ó¼º, ¹°¸® ±â¹İ ÀÌµ¿, ³×Æ®¿öÅ© µ¿±âÈ­¸¦ ´ã´çÇÕ´Ï´Ù.
-/// 2D °ÔÀÓ È¯°æ¿¡ ¸Â°Ô Rigidbody2D¿Í ÁÂ¿ì ¹İÀü(ÇÃ¸³) ±â´ÉÀ» Æ÷ÇÔÇÕ´Ï´Ù.
+/// ëª¨ë“  í”Œë ˆì´ì–´ ìºë¦­í„°ì˜ ê¸°ë³¸ì´ ë˜ëŠ” ì¶”ìƒ í´ë˜ìŠ¤.
+/// ê³µí†µ ì†ì„±, ë¬¼ë¦¬ ê¸°ë°˜ ì´ë™, ë„¤íŠ¸ì›Œí¬ ë™ê¸°í™”ë¥¼ ë‹´ë‹¹í•©ë‹ˆë‹¤.
+/// 2D ê²Œì„ í™˜ê²½ì— ë§ê²Œ Rigidbody2Dì™€ ì¢Œìš° ë°˜ì „(í”Œë¦½) ê¸°ëŠ¥ì„ í¬í•¨í•©ë‹ˆë‹¤.
 /// </summary>
 public abstract class CharacterBase : MonoBehaviourPun, IPunObservable
 {
-    // Ä³¸¯ÅÍÀÇ °øÅëÀûÀÎ ¼Ó¼º
+    // ìºë¦­í„°ì˜ ê³µí†µì ì¸ ì†ì„±
     public float MaxHp = 100f;
     public float CurHp = 100f;
     public float moveSpeed = 5f;
+    public float jumpPower = 10f; // ì í”„ í˜ ì¶”ê°€
+    public int maxJumpCount = 2; // ìµœëŒ€ ì í”„ íšŸìˆ˜ ì¶”ê°€
     public int LifeCount = 3;
 
-    private Rigidbody2D rb;
-    private Vector3 moveDirection;
+    [Header("Character Properties")]
+    public GameObject ShieldObject; // ê°€ë“œ ê¸°ëŠ¥ì„ ìœ„í•œ ì‰´ë“œ ì˜¤ë¸Œì íŠ¸ ì¶”ê°€
+    public float immobilizedTime = 1f; // ì‰´ë“œ íŒŒê´´ í›„ ì›€ì§ì´ì§€ ëª»í•˜ëŠ” ì‹œê°„
 
-    // ³×Æ®¿öÅ© µ¿±âÈ­¸¦ À§ÇÑ º¯¼ö
+    protected Rigidbody2D rb;
+    private Vector3 moveDirection;
+    private int jumpCount;
+    private bool isGrounded = false;
+    private bool isImmobilized = false; // ì›€ì§ì´ì§€ ëª»í•˜ëŠ” ìƒíƒœ
+    private Collider2D currentPlatformCollider; // í˜„ì¬ ë°Ÿê³  ìˆëŠ” í”Œë«í¼ ì½œë¼ì´ë”
+
+    // ë„¤íŠ¸ì›Œí¬ ë™ê¸°í™”ë¥¼ ìœ„í•œ ë³€ìˆ˜
     private Vector3 _networkPosition;
     private bool _networkIsFacingRight;
-    private bool isFacingRight = true;
+    protected bool isFacingRight = true;
 
-    void Start()
+    protected void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         if (rb == null)
         {
-            Debug.LogError("CharacterBase: Rigidbody2D ÄÄÆ÷³ÍÆ®°¡ ÇÊ¿äÇÕ´Ï´Ù!");
+            Debug.LogError("CharacterBase: Rigidbody2D ì»´í¬ë„ŒíŠ¸ê°€ í•„ìš”í•©ë‹ˆë‹¤!");
         }
 
-        // µ¿±âÈ­ º¯¼ö ÃÊ±âÈ­
+        jumpCount = maxJumpCount;
+
+        // ë™ê¸°í™” ë³€ìˆ˜ ì´ˆê¸°í™”
         _networkPosition = transform.position;
+
+        // ì‹œì‘ ì‹œ ì‰´ë“œ ì˜¤ë¸Œì íŠ¸ ë¹„í™œì„±í™”
+        if (ShieldObject != null)
+        {
+            ShieldObject.SetActive(false);
+        }
     }
 
     void FixedUpdate()
     {
-        // ÇÙ½É: ·ÎÄÃ ÇÃ·¹ÀÌ¾î¸¸ ¹°¸® ¿¬»êÀ» ¼öÇàÇÏµµ·Ï º¸Àå
+        // í•µì‹¬: ë¡œì»¬ í”Œë ˆì´ì–´ë§Œ ë¬¼ë¦¬ ì—°ì‚°ì„ ìˆ˜í–‰í•˜ë„ë¡ ë³´ì¥
         if (photonView.IsMine && rb != null)
         {
-            // ·ÎÄÃ ÇÃ·¹ÀÌ¾î ÀÌµ¿
-            rb.linearVelocity = new Vector2(moveDirection.x * moveSpeed, rb.linearVelocity.y);
-
-            // Ä³¸¯ÅÍ ÁÂ¿ì ¹æÇâ ÀüÈ¯
-            if (moveDirection.x > 0 && !isFacingRight)
+            if (isImmobilized)
             {
-                Flip();
+                rb.linearVelocity = Vector2.zero; // ìºë¦­í„°ê°€ ì›€ì§ì´ì§€ ëª»í•˜ë„ë¡ í•¨
             }
-            else if (moveDirection.x < 0 && isFacingRight)
+            else
             {
-                Flip();
+                // ë¡œì»¬ í”Œë ˆì´ì–´ ì´ë™
+                rb.linearVelocity = new Vector2(moveDirection.x * moveSpeed, rb.linearVelocity.y);
+
+                // ìºë¦­í„° ì¢Œìš° ë°©í–¥ ì „í™˜
+                if (moveDirection.x > 0 && !isFacingRight)
+                {
+                    Flip();
+                }
+                else if (moveDirection.x < 0 && isFacingRight)
+                {
+                    Flip();
+                }
             }
         }
         else
         {
-            // ´Ù¸¥ ÇÃ·¹ÀÌ¾î Ä³¸¯ÅÍÀÇ À§Ä¡¸¦ ºÎµå·´°Ô µ¿±âÈ­
+            // ë‹¤ë¥¸ í”Œë ˆì´ì–´ ìºë¦­í„°ì˜ ìœ„ì¹˜ë¥¼ ë¶€ë“œëŸ½ê²Œ ë™ê¸°í™”
             transform.position = Vector3.Lerp(transform.position, _networkPosition, Time.fixedDeltaTime * 10.0f);
 
-            // ³×Æ®¿öÅ©·Î ¹ŞÀº ¹æÇâ¿¡ µû¶ó ·ÎÄÃ Ä³¸¯ÅÍÀÇ ½ºÄÉÀÏÀ» µÚÁı½À´Ï´Ù.
+            // ë„¤íŠ¸ì›Œí¬ë¡œ ë°›ì€ ë°©í–¥ì— ë”°ë¼ ë¡œì»¬ ìºë¦­í„°ì˜ ìŠ¤ì¼€ì¼ì„ ë’¤ì§‘ìŠµë‹ˆë‹¤.
             if (isFacingRight != _networkIsFacingRight)
             {
                 Vector3 theScale = transform.localScale;
@@ -70,7 +96,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunObservable
     }
 
     /// <summary>
-    /// PlayerInput ½ºÅ©¸³Æ®·ÎºÎÅÍ ÀÌµ¿ ¹æÇâÀ» ¼³Á¤ÇÏ´Â ÇÔ¼ö
+    /// PlayerInput ìŠ¤í¬ë¦½íŠ¸ë¡œë¶€í„° ì´ë™ ë°©í–¥ì„ ì„¤ì •í•˜ëŠ” í•¨ìˆ˜
     /// </summary>
     public void SetMoveDirection(Vector3 direction)
     {
@@ -78,7 +104,46 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunObservable
     }
 
     /// <summary>
-    /// Ä³¸¯ÅÍ¸¦ ÁÂ¿ì·Î µÚÁı´Â ÇÔ¼ö
+    /// ì í”„ í•¨ìˆ˜ (ë”ë¸” ì í”„ í¬í•¨)
+    /// </summary>
+    public void Jump()
+    {
+        if (jumpCount > 0)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); // ê¸°ì¡´ y ì†ë„ ì´ˆê¸°í™”
+            rb.AddForce(new Vector2(0, jumpPower), ForceMode2D.Impulse);
+            jumpCount--;
+        }
+    }
+
+    /// <summary>
+    /// ì•„ë˜ ë°©í–¥í‚¤ë¡œ ë°œíŒì„ í†µê³¼í•˜ëŠ” í•¨ìˆ˜
+    /// </summary>
+    public void DropThroughPlatform()
+    {
+        // í˜„ì¬ ë°Ÿê³  ìˆëŠ” í”Œë«í¼ì´ ìˆë‹¤ë©´
+        if (currentPlatformCollider != null)
+        {
+            // 2D í”Œë«í¼ ì½œë¼ì´ë”ë¥¼ ì¼ì‹œì ìœ¼ë¡œ ë¬´ì‹œí•˜ë„ë¡ ì„¤ì •
+            Physics2D.IgnoreCollision(GetComponent<Collider2D>(), currentPlatformCollider, true);
+            StartCoroutine(RestorePlatformCollision(currentPlatformCollider));
+        }
+    }
+
+    /// <summary>
+    /// ì¼ì • ì‹œê°„ í›„ í”Œë«í¼ ì½œë¼ì´ë” ì¶©ëŒì„ ë‹¤ì‹œ í™œì„±í™”í•˜ëŠ” ì½”ë£¨í‹´
+    /// </summary>
+    private System.Collections.IEnumerator RestorePlatformCollision(Collider2D platformCollider)
+    {
+        yield return new WaitForSeconds(0.5f); // 0.5ì´ˆ í›„ ë‹¤ì‹œ í™œì„±í™”
+        if (platformCollider != null)
+        {
+            Physics2D.IgnoreCollision(GetComponent<Collider2D>(), platformCollider, false);
+        }
+    }
+
+    /// <summary>
+    /// ìºë¦­í„°ë¥¼ ì¢Œìš°ë¡œ ë’¤ì§‘ëŠ” í•¨ìˆ˜
     /// </summary>
     private void Flip()
     {
@@ -89,25 +154,55 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunObservable
     }
 
     /// <summary>
-    /// Æ÷ÅæÀÌ µ¥ÀÌÅÍ¸¦ ¼Û¼ö½ÅÇÏ±â À§ÇØ È£ÃâÇÏ´Â ÇÔ¼ö
+    /// í¬í†¤ì´ ë°ì´í„°ë¥¼ ì†¡ìˆ˜ì‹ í•˜ê¸° ìœ„í•´ í˜¸ì¶œí•˜ëŠ” í•¨ìˆ˜
     /// </summary>
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
         if (stream.IsWriting)
         {
-            // ³» Ä³¸¯ÅÍÀÌ¹Ç·Î, ³» À§Ä¡¿Í ÁÂ¿ì ¹æÇâÀ» º¸³À´Ï´Ù.
+            // ë‚´ ìºë¦­í„°ì´ë¯€ë¡œ, ë‚´ ìœ„ì¹˜ì™€ ì¢Œìš° ë°©í–¥ì„ ë³´ëƒ…ë‹ˆë‹¤.
             stream.SendNext(transform.position);
             stream.SendNext(isFacingRight);
         }
         else
         {
-            // ´Ù¸¥ ÇÃ·¹ÀÌ¾î Ä³¸¯ÅÍÀÌ¹Ç·Î, À§Ä¡¿Í ÁÂ¿ì ¹æÇâ Á¤º¸¸¦ ¹Ş½À´Ï´Ù.
+            // ë‹¤ë¥¸ í”Œë ˆì´ì–´ ìºë¦­í„°ì´ë¯€ë¡œ, ìœ„ì¹˜ì™€ ì¢Œìš° ë°©í–¥ ì •ë³´ë¥¼ ë°›ìŠµë‹ˆë‹¤.
             _networkPosition = (Vector3)stream.ReceiveNext();
             _networkIsFacingRight = (bool)stream.ReceiveNext();
         }
     }
 
-    // µ¥¹ÌÁö¸¦ ¹Ş´Â ÇÔ¼ö
+    // ì½œë¼ì´ë” ì´ë²¤íŠ¸ ì²˜ë¦¬
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        // ë°”ë‹¥ì— ë‹¿ì•˜ì„ ë•Œ ì í”„ íšŸìˆ˜ ì´ˆê¸°í™”
+        if (collision.gameObject.CompareTag("Ground") || collision.gameObject.CompareTag("Platform"))
+        {
+            isGrounded = true;
+            jumpCount = maxJumpCount;
+        }
+
+        // í˜„ì¬ ë°Ÿê³  ìˆëŠ” í”Œë«í¼ ì €ì¥ (í†µê³¼ ì í”„ë¥¼ ìœ„í•´)
+        if (collision.gameObject.CompareTag("Platform"))
+        {
+            currentPlatformCollider = collision.collider;
+        }
+    }
+
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Ground") || collision.gameObject.CompareTag("Platform"))
+        {
+            isGrounded = false;
+        }
+
+        if (collision.gameObject.CompareTag("Platform"))
+        {
+            currentPlatformCollider = null;
+        }
+    }
+
+    // ë°ë¯¸ì§€ë¥¼ ë°›ëŠ” í•¨ìˆ˜
     public void TakeDamage(float damage)
     {
         if (photonView.IsMine)
@@ -115,12 +210,22 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunObservable
             CurHp -= damage;
             if (CurHp <= 0)
             {
-                // ¸ñ¼û Â÷°¨ ¹× ¸®½ºÆù ·ÎÁ÷
+                // ëª©ìˆ¨ ì°¨ê° ë° ë¦¬ìŠ¤í° ë¡œì§
             }
         }
     }
 
-    // °¢ Ä³¸¯ÅÍº°·Î ´Ù¸£°Ô ±¸ÇöÇÒ Ãß»ó ÇÔ¼öµé
+    /// <summary>
+    /// ìºë¦­í„°ë¥¼ ì ì‹œ ì›€ì§ì´ì§€ ëª»í•˜ê²Œ ë§Œë“œëŠ” ì½”ë£¨í‹´
+    /// </summary>
+    protected IEnumerator ImmobilizeCharacter()
+    {
+        isImmobilized = true;
+        yield return new WaitForSeconds(immobilizedTime);
+        isImmobilized = false;
+    }
+
+    // ê° ìºë¦­í„°ë³„ë¡œ ë‹¤ë¥´ê²Œ êµ¬í˜„í•  ì¶”ìƒ í•¨ìˆ˜ë“¤
     public abstract void Attack();
     public abstract void Guard();
     public abstract void UseSkill();

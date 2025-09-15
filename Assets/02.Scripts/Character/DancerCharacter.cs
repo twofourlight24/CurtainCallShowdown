@@ -4,7 +4,7 @@ public class DancerCharacter : CharacterBase
 {
     [Header("Character Properties")]
     public float AttackDamage = 15f;
-
+    
     public override void Attack()
     {
         Debug.Log("댄서 캐릭터의 강한 공격!");
