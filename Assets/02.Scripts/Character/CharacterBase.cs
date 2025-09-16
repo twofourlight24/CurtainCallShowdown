@@ -8,7 +8,7 @@ using System.Collections;
 /// 공통 속성, 물리 기반 이동, 네트워크 동기화를 담당합니다.
 /// 2D 게임 환경에 맞게 Rigidbody2D와 좌우 반전(플립) 기능을 포함합니다.
 /// </summary>
-public abstract class CharacterBase : MonoBehaviourPun, IPunObservable
+public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCallback, IPunObservable
 {
     // 캐릭터의 공통적인 속성
     public float MaxHp = 100f;
@@ -33,6 +33,15 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunObservable
     private Vector3 _networkPosition;
     private bool _networkIsFacingRight;
     protected bool isFacingRight = true;
+
+    public void OnPhotonInstantiate(PhotonMessageInfo info)
+    {
+        // 모든 클라에서 공통 실행 → GameManager에 등록
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.RegisterCharacter(photonView.Owner, gameObject);
+        }
+    }
 
     protected void Start()
     {
@@ -203,16 +212,28 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunObservable
     }
 
     // 데미지를 받는 함수
-    public void TakeDamage(float damage)
+
+    [PunRPC]
+    public void RPC_TakeDamage(float dmg)
     {
-        if (photonView.IsMine)
+        CurHp -= dmg;
+        if (CurHp <= 0)
         {
-            CurHp -= damage;
-            if (CurHp <= 0)
-            {
-                // 목숨 차감 및 리스폰 로직
-            }
+            CurHp = 0;
+            Die();
         }
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.UpdatePlayerUI(photonView.Owner);
+        }
+
+        Debug.Log($"{photonView.Owner.NickName} took {dmg} damage. HP={CurHp}");
+    }
+
+    private void Die()
+    {
+        Debug.Log($"{photonView.Owner.NickName} is Dead!");
+        // 사망 처리
     }
 
     /// <summary>

@@ -1,14 +1,10 @@
-using Photon.Pun;
+ï»¿using Photon.Pun;
 using System.Collections.Generic;
-using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// ÀÎ°ÔÀÓ UI¸¦ °ü¸®ÇÏ´Â ½ºÅ©¸³Æ®.
-/// °ÔÀÓ ¸Å´ÏÀú¿Í ºĞ¸®ÇÏ¿© UI ·ÎÁ÷À» ´ã´çÇÕ´Ï´Ù.
-/// </summary>
+
 public class UIManager : MonoBehaviourPunCallbacks
 {
     [Header("UI - In-Game Info")]
@@ -20,59 +16,68 @@ public class UIManager : MonoBehaviourPunCallbacks
     public Image[] playerHpBars;
     public GameObject[] playerLifeIconsParent;
 
-    /// <summary>
-    /// ÀÎ°ÔÀÓ UI¸¦ ÃÊ±âÈ­ÇÕ´Ï´Ù.
-    /// </summary>
+
     public void InitializeInGameUI()
     {
-        // ¸ğµç ÇÃ·¹ÀÌ¾î UI ÆĞ³ÎÀ» ºñÈ°¼ºÈ­
+        // ëª¨ë“  í”Œë ˆì´ì–´ UI íŒ¨ë„ì„ ë¹„í™œì„±í™”
         foreach (var panel in playerInfoPanels)
         {
             panel.SetActive(false);
         }
     }
+    public void ActivatePanelsForAllPlayers()
+    {
+        // ëª¨ë“  íŒ¨ë„ ë¹„í™œì„±í™”
+        foreach (var panel in playerInfoPanels)
+            panel.SetActive(false);
 
-    /// <summary>
-    /// ÇÃ·¹ÀÌ¾îÀÇ UI¸¦ ¾÷µ¥ÀÌÆ®ÇÕ´Ï´Ù.
-    /// ÀÌ ÇÔ¼ö´Â GameManager¿¡¼­ È£ÃâµË´Ï´Ù.
-    /// </summary>
-    /// <param name="targetPlayer">UI¸¦ ¾÷µ¥ÀÌÆ®ÇÒ ÇÃ·¹ÀÌ¾î</param>
-    /// <param name="character">ÇÃ·¹ÀÌ¾î Ä³¸¯ÅÍÀÇ CharacterBase ÄÄÆ÷³ÍÆ®</param>
-    /// <param name="characterData">ÇÃ·¹ÀÌ¾î Ä³¸¯ÅÍÀÇ CharacterData ÄÄÆ÷³ÍÆ®</param>
+        // í˜„ì¬ ë£¸ì— ìˆëŠ” í”Œë ˆì´ì–´ ìˆ˜ë§Œí¼ í™œì„±í™”
+        for (int i = 0; i < PhotonNetwork.PlayerList.Length; i++)
+        {
+            if (i < playerInfoPanels.Length)
+            {
+                playerInfoPanels[i].SetActive(true);
+                playerNicknames[i].text = PhotonNetwork.PlayerList[i].NickName; // ê¸°ë³¸ ë‹‰ë„¤ì„ í‘œì‹œ
+                playerHpBars[i].fillAmount = 1f; // ê¸°ë³¸ ì²´ë ¥ë°” í’€
+            }
+        }
+    }
+
+
     public void UpdatePlayerUI(Photon.Realtime.Player targetPlayer, CharacterBase character, CharacterData characterData)
     {
-        // ÇöÀç ·ë¿¡¼­ ÇÃ·¹ÀÌ¾î ¼ø¼­´ë·Î ÀÎµ¦½º Ã£±â
+        // í˜„ì¬ ë£¸ì—ì„œ í”Œë ˆì´ì–´ ìˆœì„œëŒ€ë¡œ ì¸ë±ìŠ¤ ì°¾ê¸°
         int playerIndex = System.Array.FindIndex(PhotonNetwork.PlayerList, p => p == targetPlayer);
 
-        if (playerIndex == -1) return; // ¸ø Ã£À¸¸é Á¾·á
+        if (playerIndex == -1) return; // ëª» ì°¾ìœ¼ë©´ ì¢…ë£Œ
 
         if (character != null)
         {
-            // Ã¼·Â¹Ù ¾÷µ¥ÀÌÆ® (Image.fillAmount »ç¿ë)
+            // ì²´ë ¥ë°” ì—…ë°ì´íŠ¸ (Image.fillAmount ì‚¬ìš©)
             playerHpBars[playerIndex].fillAmount = character.CurHp / character.MaxHp;
         }
 
-        // Ä³¸¯ÅÍ ¾ÆÀÌÄÜ ¾÷µ¥ÀÌÆ®
+        // ìºë¦­í„° ì•„ì´ì½˜ ì—…ë°ì´íŠ¸
         if (characterData != null && playerIcons[playerIndex] != null)
         {
             playerIcons[playerIndex].sprite = characterData.data.characterIcon;
         }
 
-        // ´Ğ³×ÀÓ ¾÷µ¥ÀÌÆ®
+        // ë‹‰ë„¤ì„ ì—…ë°ì´íŠ¸
         playerNicknames[playerIndex].text = targetPlayer.NickName;
 
-        // ÇØ´ç ÆĞ³Î È°¼ºÈ­
+        // í•´ë‹¹ íŒ¨ë„ í™œì„±í™”
         playerInfoPanels[playerIndex].SetActive(true);
     }
     public void RefreshAllPlayerUI(Dictionary<string, GameObject> playerCharacters)
     {
-        // ¸ğµç ÆĞ³Î ºñÈ°¼ºÈ­
+        // ëª¨ë“  íŒ¨ë„ ë¹„í™œì„±í™”
         for (int i = 0; i < playerInfoPanels.Length; i++)
         {
             playerInfoPanels[i].SetActive(false);
         }
 
-        // ÇöÀç ¹æ ÇÃ·¹ÀÌ¾î ÀüºÎ UI ¼¼ÆÃ
+        // í˜„ì¬ ë°© í”Œë ˆì´ì–´ ì „ë¶€ UI ì„¸íŒ…
         for (int i = 0; i < PhotonNetwork.PlayerList.Length; i++)
         {
             var player = PhotonNetwork.PlayerList[i];
@@ -85,12 +90,7 @@ public class UIManager : MonoBehaviourPunCallbacks
         }
     }
 
-    /// <summary>
-    /// ÇÃ·¹ÀÌ¾îÀÇ ¸ñ¼û UI¸¦ ¾÷µ¥ÀÌÆ®ÇÕ´Ï´Ù.
-    /// ÀÌ ÇÔ¼ö´Â GameManager¿¡¼­ È£ÃâµË´Ï´Ù.
-    /// </summary>
-    /// <param name="targetPlayer">UI¸¦ ¾÷µ¥ÀÌÆ®ÇÒ ÇÃ·¹ÀÌ¾î</param>
-    /// <param name="currentLives">ÇöÀç ¸ñ¼û ¼ö</param>
+
     public void UpdateLifeUI(Photon.Realtime.Player targetPlayer, int currentLives)
     {
         int playerIndex = System.Array.FindIndex(PhotonNetwork.PlayerList, p => p == targetPlayer);
@@ -101,17 +101,13 @@ public class UIManager : MonoBehaviourPunCallbacks
             {
                 for (int j = 0; j < playerLifeIconsParent[playerIndex].transform.childCount; j++)
                 {
-                    // ¸ñ¼û ¼ö¸¸Å­ ¾ÆÀÌÄÜ È°¼ºÈ­
+                    // ëª©ìˆ¨ ìˆ˜ë§Œí¼ ì•„ì´ì½˜ í™œì„±í™”
                     playerLifeIconsParent[playerIndex].transform.GetChild(j).gameObject.SetActive(j < currentLives);
                 }
             }
         }
     }
 
-    /// <summary>
-    /// °ÔÀÓ Á¾·á UI¸¦ Ç¥½ÃÇÕ´Ï´Ù.
-    /// </summary>
-    /// <param name="resultMessage">Ç¥½ÃÇÒ °á°ú ¸Ş½ÃÁö</param>
     public void DisplayEndGameUI(string resultMessage)
     {
         resultPanel.SetActive(true);

@@ -44,17 +44,15 @@ public class Projectile : MonoBehaviourPun
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        // 내 발사체이고, 상대방 플레이어와 충돌했을 때
         if (photonView.IsMine && other.CompareTag("Player"))
         {
-            // 상대 플레이어의 CharacterBase를 찾아서 데미지 적용
-            CharacterBase otherCharacter = other.GetComponent<CharacterBase>();
-            if (otherCharacter != null)
+            PhotonView targetView = other.GetComponent<PhotonView>();
+            if (targetView != null)
             {
-                otherCharacter.TakeDamage(damage);
+                // RPC로 데미지 전달
+                targetView.RPC("RPC_TakeDamage", RpcTarget.AllBuffered, damage);
             }
 
-            // 발사체 파괴
             PhotonNetwork.Destroy(gameObject);
         }
     }
