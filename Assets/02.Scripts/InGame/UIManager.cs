@@ -1,5 +1,7 @@
 ﻿using Photon.Pun;
+using Photon.Realtime;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -16,6 +18,15 @@ public class UIManager : MonoBehaviourPunCallbacks
     public Image[] playerHpBars;
     public GameObject[] playerLifeIconsParent;
 
+    private int GetPlayerIndex(Player target)
+    {
+        if (target == null) return -1;
+        var ordered = PhotonNetwork.PlayerList.OrderBy(p => p.ActorNumber).ToArray();
+        for (int i = 0; i < ordered.Length; i++)
+            if (ordered[i] == target) return i;
+        return -1;
+    }
+
 
     public void InitializeInGameUI()
     {
@@ -25,48 +36,43 @@ public class UIManager : MonoBehaviourPunCallbacks
             panel.SetActive(false);
         }
     }
+    // 선택: 모든 패널을 "정렬된 순서"로 활성화
     public void ActivatePanelsForAllPlayers()
     {
-        // 모든 패널 비활성화
         foreach (var panel in playerInfoPanels)
             panel.SetActive(false);
 
-        // 현재 룸에 있는 플레이어 수만큼 활성화
-        for (int i = 0; i < PhotonNetwork.PlayerList.Length; i++)
+        var ordered = PhotonNetwork.PlayerList.OrderBy(p => p.ActorNumber).ToArray();
+        for (int i = 0; i < ordered.Length && i < playerInfoPanels.Length; i++)
         {
-            if (i < playerInfoPanels.Length)
-            {
-                playerInfoPanels[i].SetActive(true);
-                playerNicknames[i].text = PhotonNetwork.PlayerList[i].NickName; // 기본 닉네임 표시
-                playerHpBars[i].fillAmount = 1f; // 기본 체력바 풀
-            }
+            playerInfoPanels[i].SetActive(true);
+            playerNicknames[i].text = ordered[i].NickName;
+            playerHpBars[i].fillAmount = 1f;
         }
     }
 
 
-    public void UpdatePlayerUI(Photon.Realtime.Player targetPlayer, CharacterBase character, CharacterData characterData)
+    public void UpdatePlayerUI(Player targetPlayer, CharacterBase character, CharacterData characterData)
     {
-        // 현재 룸에서 플레이어 순서대로 인덱스 찾기
-        int playerIndex = System.Array.FindIndex(PhotonNetwork.PlayerList, p => p == targetPlayer);
+        int playerIndex = GetPlayerIndex(targetPlayer);
+        if (playerIndex < 0 || playerIndex >= playerInfoPanels.Length) return;
 
-        if (playerIndex == -1) return; // 못 찾으면 종료
-
-        if (character != null)
+        // 체력
+        if (character != null && character.MaxHp > 0f)
         {
-            // 체력바 업데이트 (Image.fillAmount 사용)
-            playerHpBars[playerIndex].fillAmount = character.CurHp / character.MaxHp;
+            float ratio = Mathf.Clamp01(character.CurHp / character.MaxHp);
+            playerHpBars[playerIndex].fillAmount = ratio;
+            // Debug.Log($"[UIManager] {targetPlayer.NickName} HP {character.CurHp}/{character.MaxHp} ({ratio})");
         }
 
-        // 캐릭터 아이콘 업데이트
+        // 아이콘
         if (characterData != null && playerIcons[playerIndex] != null)
-        {
             playerIcons[playerIndex].sprite = characterData.data.characterIcon;
-        }
 
-        // 닉네임 업데이트
+        // 닉네임(안정화)
         playerNicknames[playerIndex].text = targetPlayer.NickName;
 
-        // 해당 패널 활성화
+        // 패널 활성
         playerInfoPanels[playerIndex].SetActive(true);
     }
     public void RefreshAllPlayerUI(Dictionary<string, GameObject> playerCharacters)
@@ -91,21 +97,23 @@ public class UIManager : MonoBehaviourPunCallbacks
     }
 
 
-    public void UpdateLifeUI(Photon.Realtime.Player targetPlayer, int currentLives)
+    // 기존 UpdateLifeUI 교체: 같은 인덱싱 규칙 사용
+    public void UpdateLifeUI(Player targetPlayer, int currentLives)
     {
-        int playerIndex = System.Array.FindIndex(PhotonNetwork.PlayerList, p => p == targetPlayer);
+        int playerIndex = GetPlayerIndex(targetPlayer);
+        if (playerIndex < 0 || playerIndex >= playerLifeIconsParent.Length) return;
 
-        if (playerIndex != -1)
-        {
-            if (playerLifeIconsParent[playerIndex] != null)
-            {
-                for (int j = 0; j < playerLifeIconsParent[playerIndex].transform.childCount; j++)
-                {
-                    // 목숨 수만큼 아이콘 활성화
-                    playerLifeIconsParent[playerIndex].transform.GetChild(j).gameObject.SetActive(j < currentLives);
-                }
-            }
-        }
+        var parent = playerLifeIconsParent[playerIndex];
+        if (parent == null) return;
+
+        int childCount = parent.transform.childCount;
+        for (int j = 0; j < childCount; j++)
+            parent.transform.GetChild(j).gameObject.SetActive(j < currentLives);
+    }
+    public void ShowRoundResultUI(List<Player> ranking)
+    {
+        if (resultPanel != null) resultPanel.SetActive(true);
+
     }
 
     public void DisplayEndGameUI(string resultMessage)

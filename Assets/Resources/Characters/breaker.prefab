@@ -329,6 +329,7 @@ MonoBehaviour:
   LifeCount: 3
   ShieldObject: {fileID: 1861333862489302294}
   immobilizedTime: 1
+  gm: {fileID: 0}
   AttackDamage: 15
   shieldScaleDecrease: 0.3
   minShieldScale: 0.1

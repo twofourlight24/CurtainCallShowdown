@@ -1,85 +1,141 @@
-using UnityEngine;
-using TMPro;
-using Photon.Pun;
-using System.Collections.Generic;
-using ExitGames.Client.Photon;
-using System.Linq;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using Photon.Pun;
+using Photon.Realtime;
+using UnityEngine;
 
-public class ShowdownMode : MonoBehaviourPunCallbacks
+public class ShowdownMode : MonoBehaviourPunCallbacks, IGameMode
 {
-    private GameManager gameManager;
-    private int lifeCount = 3;
-    private Dictionary<string, int> playerLives = new Dictionary<string, int>();
+    public string ModeName => "Showdown";
 
-    /// <summary>
-    /// 게임 모드를 초기화하고 필요한 참조를 설정합니다.
-    /// </summary>
-    public void Initialize(GameManager manager)
+    private GameManager gm;
+    private bool roundRunning = false;
+
+    private readonly Dictionary<Player, int> lives = new(); // 플레이어별 남은 목숨
+
+    // 무적 상태 추적
+    private readonly HashSet<Player> invinciblePlayers = new();
+
+    [Header("Config")]
+    public int startingLives = 3;
+    public float respawnDelay = 5f;
+    public float invincibleTime = 2f;
+
+    public void Initialize(GameManager gm)
     {
-        gameManager = manager;
-        InitializeShowdownMode();
+        this.gm = gm;
+        Debug.Log("[Showdown] Initialized.");
+    }
+
+    public void StartRound()
+    {
+        Debug.Log("[Showdown] Round Started.");
+        roundRunning = true;
+
+        lives.Clear();
+        foreach (var p in PhotonNetwork.PlayerList)
+        {
+            lives[p] = startingLives;
+            gm.uiManager.UpdateLifeUI(p, startingLives); // UI 초기화
+        }
+
+    }
+
+    public void EndRound()
+    {
+        if (!roundRunning) return;
+        roundRunning = false;
+        Debug.Log("[Showdown] Round Ended.");
     }
 
     /// <summary>
-    /// 쇼다운 모드를 초기화하고 플레이어 목숨을 설정합니다.
+    /// Player가 죽었을 때 호출 (CharacterBase -> GameManager -> ShowdownMode)
     /// </summary>
-    private void InitializeShowdownMode()
+    public void OnPlayerEliminated(Player player)
     {
-        // 모든 플레이어의 목숨 초기화
-        foreach (var player in PhotonNetwork.PlayerList)
+        if (!roundRunning || !lives.ContainsKey(player)) return;
+
+        lives[player] -= 1;
+        gm.uiManager.UpdateLifeUI(player, lives[player]); // 라이프 UI 갱신
+        Debug.Log($"[Showdown] {player.NickName} 사망 → 남은 목숨 {lives[player]}");
+
+        if (lives[player] > 0)
         {
-            playerLives[player.NickName] = lifeCount;
-        }
-
-        // 로컬 플레이어만 자신의 캐릭터를 스폰
-        if (PhotonNetwork.LocalPlayer != null)
-        {
-            // GameManager에서 캐릭터 스폰 코루틴 호출
-            gameManager.StartCoroutine(gameManager.WaitForCharacterSelectionAndSpawn());
-        }
-    }
-
-    /// <summary>
-    /// 캐릭터의 체력이 0이 되었을 때 호출됩니다.
-    /// </summary>
-    /// <param name="player">체력을 잃은 플레이어</param>
-    public void OnPlayerDied(Photon.Realtime.Player player)
-    {
-        if (!playerLives.ContainsKey(player.NickName)) return;
-
-        // 목숨 감소
-        playerLives[player.NickName]--;
-
-        // GameManager를 통해 UI 업데이트
-        gameManager.UpdateLifeUI(player, playerLives[player.NickName]);
-
-        if (playerLives[player.NickName] <= 0)
-        {
-            // 목숨이 0이면 게임에서 탈락
-            player.SetCustomProperties(new ExitGames.Client.Photon.Hashtable { { "IsEliminated", true } });
-            CheckForWinner();
+            // 리스폰 시작
+            if (PhotonNetwork.IsMasterClient)
+                gm.StartCoroutine(RespawnAfterDelay(player));
         }
         else
         {
-            // 목숨이 남아있으면 부활
-            gameManager.StartCoroutine(gameManager.RespawnPlayer(player));
+            Debug.Log($"[Showdown] {player.NickName} 탈락!");
+
+            // 탈락 처리: 캐릭터 비활성
+            var obj = gm.GetCharacterObject(player);
+            if (obj) obj.SetActive(false);
+
+            CheckForRoundEnd();
         }
+    }
+
+    private IEnumerator RespawnAfterDelay(Player player)
+    {
+        yield return new WaitForSeconds(respawnDelay);
+        gm.StartCoroutine(gm.RespawnPlayer(player)); // GameManager의 RespawnPlayer 코루틴 재사용
+
+        // 무적 시간 부여
+        StartCoroutine(ApplyInvincibility(player, invincibleTime));
+    }
+
+    private IEnumerator ApplyInvincibility(Player player, float duration)
+    {
+        invinciblePlayers.Add(player);
+        var obj = gm.GetCharacterObject(player);
+        if (obj != null)
+        {
+            var renderer = obj.GetComponentInChildren<Renderer>();
+            if (renderer) renderer.material.color = Color.cyan; // 간단한 시각효과
+        }
+
+        yield return new WaitForSeconds(duration);
+
+        invinciblePlayers.Remove(player);
+        if (obj != null)
+        {
+            var renderer = obj.GetComponentInChildren<Renderer>();
+            if (renderer) renderer.material.color = Color.white;
+        }
+    }
+
+    private void CheckForRoundEnd()
+    {
+        // 아직 목숨이 남아 있는 플레이어만 필터
+        var alive = lives.Where(kv => kv.Value > 0).Select(kv => kv.Key).ToList();
+
+        if (alive.Count <= 1)
+        {
+            EndRound();
+
+            var ranking = PhotonNetwork.PlayerList.ToList();
+            if (alive.Count == 1)
+            {
+                var winner = alive[0];
+                ranking.Remove(winner);
+                ranking.Insert(0, winner);
+            }
+
+            gm.EndRound(ranking);
+        }
+    }
+
+    public void OnRoundComplete(List<Player> ranking)
+    {
+        if (gm.uiManager != null)
+            gm.uiManager.ShowRoundResultUI(ranking);
     }
 
     /// <summary>
-    /// 최후의 1인이 남았는지 확인하고 게임을 종료합니다.
+    /// 공격/데미지 계산 시 무적이면 무시하도록 체크
     /// </summary>
-    private void CheckForWinner()
-    {
-        var activePlayers = PhotonNetwork.PlayerList
-            .Where(p => !(p.CustomProperties.ContainsKey("IsEliminated") && (bool)p.CustomProperties["IsEliminated"]))
-            .ToList();
-
-        if (activePlayers.Count <= 1)
-        {
-            // GameManager를 통해 게임 종료
-            gameManager.EndGame(activePlayers.FirstOrDefault());
-        }
-    }
+    public bool IsInvincible(Player player) => invinciblePlayers.Contains(player);
 }

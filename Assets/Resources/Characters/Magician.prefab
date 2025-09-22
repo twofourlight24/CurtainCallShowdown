@@ -285,6 +285,7 @@ MonoBehaviour:
   LifeCount: 3
   ShieldObject: {fileID: 3767556995211023607}
   immobilizedTime: 1
+  gm: {fileID: 0}
   ShootPos: {fileID: 3388993588175639634}
   cardPrefab: {fileID: 3936075941075142554, guid: b81bb93b32dc45744b0e081cc82cc5bf, type: 3}
   cardSpeed: 20

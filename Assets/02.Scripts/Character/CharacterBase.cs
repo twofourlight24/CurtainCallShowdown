@@ -33,13 +33,15 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     private Vector3 _networkPosition;
     private bool _networkIsFacingRight;
     protected bool isFacingRight = true;
+    public GameManager gm;
 
     public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
         // 모든 클라에서 공통 실행 → GameManager에 등록
-        if (GameManager.Instance != null)
+        var owner = photonView.Owner;
+        if (owner != null && GameManager.Instance != null)
         {
-            GameManager.Instance.RegisterCharacter(photonView.Owner, gameObject);
+            GameManager.Instance.RegisterCharacter(owner, this.gameObject);
         }
     }
 
@@ -50,6 +52,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         {
             Debug.LogError("CharacterBase: Rigidbody2D 컴포넌트가 필요합니다!");
         }
+        gm = GameManager.Instance;
 
         jumpCount = maxJumpCount;
 
@@ -216,6 +219,9 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     [PunRPC]
     public void RPC_TakeDamage(float dmg)
     {
+        if (GameManager.Instance?.currentActiveGameMode is ShowdownMode sd &&
+       sd.IsInvincible(photonView.Owner))
+            return;
         CurHp -= dmg;
         if (CurHp <= 0)
         {
@@ -229,12 +235,25 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
 
         Debug.Log($"{photonView.Owner.NickName} took {dmg} damage. HP={CurHp}");
     }
-
-    private void Die()
+    public void Die()
     {
-        Debug.Log($"{photonView.Owner.NickName} is Dead!");
-        // 사망 처리
+        PhotonView pv = GetComponent<PhotonView>();
+        if (!PhotonNetwork.IsMasterClient) return;     
+        if (pv == null || pv.Owner == null) return;
+
+        //  GameManager와 PhotonView 안전하게 확보
+        var gmInst = GameManager.Instance;
+        if (gmInst == null) { Debug.LogError("[Die] GameManager.Instance is null"); return; }
+
+        var gmPV = gmInst.GetComponent<PhotonView>();
+        if (gmPV == null) { Debug.LogError("[Die] GameManager has no PhotonView"); return; }
+
+        //  Player 객체 대신 ActorNumber(int) 전송
+        int actorNumber = pv.Owner.ActorNumber;
+        gmPV.RPC(nameof(GameManager.RPC_PlayerEliminated), RpcTarget.All, actorNumber);
+
     }
+
 
     /// <summary>
     /// 캐릭터를 잠시 움직이지 못하게 만드는 코루틴
