@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: daece5510d91a78449eecbf6828647ce
+guid: def32671463cd9b45a42f84aea1affcd
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -6092313075528410591
-    second: hpbar_white_0
+      213: 6858169268466840099
+    second: DancerIMG_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -51,7 +51,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 800
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -97,19 +97,6 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
-    buildTarget: Android
-    maxTextureSize: 2048
-    resizeAlgorithm: 0
-    textureFormat: -1
-    textureCompression: 1
-    compressionQuality: 50
-    crunchedCompression: 0
-    allowsAlphaSplitting: 0
-    overridden: 0
-    ignorePlatformSupport: 0
-    androidETC2FallbackOverride: 0
-    forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 4
     buildTarget: WebGL
     maxTextureSize: 2048
     resizeAlgorithm: 0
@@ -126,23 +113,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: hpbar_white_0
+      name: DancerIMG_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 0
-        width: 149
-        height: 22
+        y: 25
+        width: 1600
+        height: 1575
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 12a59a84981c37ba0800000000000000
-      internalID: -6092313075528410591
+      spriteID: 32277701d9c1d2f50800000000000000
+      internalID: 6858169268466840099
       vertices: []
       indices: 
       edges: []
@@ -151,7 +138,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: ad33dd15921f82e4c9dcaf2cee676c3a
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      hpbar_white_0: -6092313075528410591
+      DancerIMG_0: 6858169268466840099
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

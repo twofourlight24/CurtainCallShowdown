@@ -210,7 +210,87 @@ public class GameManager : MonoBehaviourPunCallbacks
             SpawnLocalPlayer();
         }
     }
+    private int GetRandomSpawnIndex()
+    {
+        if (spawnPoints == null || spawnPoints.Length == 0) return 0;
+        return Random.Range(0, spawnPoints.Length);
+    }
 
+    // ShowdownMode에서 lives[player] > 0 일 때 호출하도록 공개 API
+    public void OrderRespawn(Player target, float delay, float invincibleTime)
+    {
+        if (target == null) return;
+        int spawnIndex = GetRandomSpawnIndex();
+        // 소유자에게만 지시 (Owner)
+        photonView.RPC(nameof(RPC_OrderRespawn), target, spawnIndex, delay, invincibleTime);
+    }
+
+    [PunRPC]
+    public void RPC_OrderRespawn(int spawnIndex, float delay, float invincibleTime)
+    {
+        // 로컬(= 소유자)만 처리
+        StartCoroutine(LocalRespawnCoroutine(spawnIndex, delay, invincibleTime));
+    }
+
+    private IEnumerator LocalRespawnCoroutine(int spawnIndex, float delay, float invincibleTime)
+    {
+        // 오버레이 표시
+        uiManager?.ShowRespawnOverlay(delay);
+
+        // 기존 내 캐릭터가 씬에 남아 있다면 파괴(안전)
+        GameObject myChar = GetCharacterObject(PhotonNetwork.LocalPlayer);
+        if (myChar != null)
+        {
+            // Owner가 파괴 권한 보유 → 안전하게 Destroy
+            var pv = myChar.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+                PhotonNetwork.Destroy(myChar);
+            else
+                myChar.SetActive(false);
+        }
+
+        // 카운트다운 대기
+        yield return new WaitForSeconds(delay);
+
+        // 스폰 위치
+        Vector3 pos = spawnPoints != null && spawnIndex >= 0 && spawnIndex < spawnPoints.Length
+            ? spawnPoints[spawnIndex].position
+            : Vector3.zero;
+        Quaternion rot = spawnPoints != null && spawnIndex >= 0 && spawnIndex < spawnPoints.Length
+            ? spawnPoints[spawnIndex].rotation
+            : Quaternion.identity;
+
+        // 내 선택 캐릭터 프리팹 이름
+        string prefabName = "";
+        if (PhotonNetwork.LocalPlayer.CustomProperties != null &&
+            PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue("SelectedCharacterName", out object v) &&
+            v is string s && !string.IsNullOrEmpty(s))
+        {
+            prefabName = s;
+        }
+        else
+        {
+            Debug.LogError("[GM] SelectedCharacterName not set on respawn.");
+            uiManager?.HideRespawnOverlay();
+            yield break;
+        }
+
+        // 재생성
+        GameObject newChar = PhotonNetwork.Instantiate("Characters/" + prefabName, pos, rot);
+        if (newChar != null)
+        {
+            var cb = newChar.GetComponent<CharacterBase>();
+            if (cb != null && newChar.GetPhotonView().IsMine)
+            {
+                // 무적 부여
+                cb.SetInvincible(invincibleTime);
+            }
+        }
+
+        // UI 갱신/오버레이 끄기
+        uiManager?.HideRespawnOverlay();
+        UpdatePlayerUI(PhotonNetwork.LocalPlayer);
+    }
     public IEnumerator WaitForCharacterSelectionAndSpawn()
     {
         Player localPlayer = PhotonNetwork.LocalPlayer;
@@ -299,8 +379,8 @@ public class GameManager : MonoBehaviourPunCallbacks
             var characterBase = characterObject.GetComponent<CharacterBase>();
             if (characterBase != null && characterObject.GetPhotonView().IsMine)
             {
-                var playerInput = characterObject.AddComponent<PlayerInput>();
-                playerInput.controlledCharacter = characterBase;
+                characterBase.CurHp = characterBase.MaxHp;
+                characterBase.SetInvincible(2);
             }
 
             playerCharacters[localPlayer.NickName] = characterObject;

@@ -1,6 +1,8 @@
 using UnityEngine;
 using Photon.Pun; // Photon.Pun 네임스페이스 추가
 
+
+[DisallowMultipleComponent]
 public class PlayerInput : MonoBehaviourPun
 {
     // 입력에 따라 호출할 델리게이트 (이벤트)
@@ -64,7 +66,7 @@ public class PlayerInput : MonoBehaviourPun
             }
 
             // 아래 방향키로 발판 통과
-            if (Input.GetKeyDown(KeyCode.DownArrow))
+            if (Input.GetKeyDown(KeyCode.DownArrow)||Input.GetKeyDown(KeyCode.S))
             {
                 if (controlledCharacter != null)
                 {

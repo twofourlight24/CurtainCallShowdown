@@ -1,5 +1,6 @@
 ﻿using Photon.Pun;
 using Photon.Realtime;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -17,6 +18,10 @@ public class UIManager : MonoBehaviourPunCallbacks
     public TMP_Text[] playerNicknames;
     public Image[] playerHpBars;
     public GameObject[] playerLifeIconsParent;
+
+    [Header("UI - Other")]
+    public GameObject respawnOverlayPanel;  // 회색 이미지 패널 (Canvas 안)
+    public TMP_Text respawnCountdownText;   // 남은 시간 표시
 
     private int GetPlayerIndex(Player target)
     {
@@ -115,10 +120,35 @@ public class UIManager : MonoBehaviourPunCallbacks
         if (resultPanel != null) resultPanel.SetActive(true);
 
     }
-
     public void DisplayEndGameUI(string resultMessage)
     {
         resultPanel.SetActive(true);
         resultText.text = resultMessage;
+    }
+    public void ShowRespawnOverlay(float seconds)
+    {
+        if (respawnOverlayPanel != null) respawnOverlayPanel.SetActive(true);
+        if (respawnCountdownText != null) respawnCountdownText.text = Mathf.CeilToInt(seconds).ToString();
+        StopCoroutine("RespawnOverlayRoutine");
+        StartCoroutine(RespawnOverlayRoutine(seconds));
+    }
+
+    public void HideRespawnOverlay()
+    {
+        StopCoroutine("RespawnOverlayRoutine");
+        if (respawnOverlayPanel != null) respawnOverlayPanel.SetActive(false);
+    }
+
+    private IEnumerator RespawnOverlayRoutine(float seconds)
+    {
+        float t = seconds;
+        while (t > 0f)
+        {
+            if (respawnCountdownText != null)
+                respawnCountdownText.text = Mathf.CeilToInt(t).ToString();
+            t -= Time.deltaTime;
+            yield return null;
+        }
+        // 리스폰 직전에 자동 숨기지는 말고, 리스폰 완료 시 GameManager가 Hide 호출
     }
 }

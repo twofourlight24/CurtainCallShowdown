@@ -64,7 +64,7 @@ public class ShowdownMode : MonoBehaviourPunCallbacks, IGameMode
         {
             // 리스폰 시작
             if (PhotonNetwork.IsMasterClient)
-                gm.StartCoroutine(RespawnAfterDelay(player));
+                gm.OrderRespawn(player, respawnDelay, invincibleTime);
         }
         else
         {

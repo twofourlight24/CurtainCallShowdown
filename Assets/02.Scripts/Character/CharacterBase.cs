@@ -28,6 +28,8 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     private bool isGrounded = false;
     private bool isImmobilized = false; // 움직이지 못하는 상태
     private Collider2D currentPlatformCollider; // 현재 밟고 있는 플랫폼 콜라이더
+    private bool isDead = false;
+    private float invincibleUntil = 0f; // Time.time 기준
 
     // 네트워크 동기화를 위한 변수
     private Vector3 _networkPosition;
@@ -37,11 +39,15 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
 
     public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
-        // 모든 클라에서 공통 실행 → GameManager에 등록
         var owner = photonView.Owner;
         if (owner != null && GameManager.Instance != null)
-        {
             GameManager.Instance.RegisterCharacter(owner, this.gameObject);
+
+        if (photonView.IsMine)
+        {
+            if (!TryGetComponent<PlayerInput>(out var input))
+                input = gameObject.AddComponent<PlayerInput>();
+            input.controlledCharacter = this;
         }
     }
 
@@ -222,6 +228,9 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         if (GameManager.Instance?.currentActiveGameMode is ShowdownMode sd &&
        sd.IsInvincible(photonView.Owner))
             return;
+        if (isDead) return; // 이미 죽은 상태면 무시
+        if(Time.time < invincibleUntil) return; // 무적 상태면 무시
+
         CurHp -= dmg;
         if (CurHp <= 0)
         {
@@ -237,6 +246,11 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     }
     public void Die()
     {
+        if(isDead) return; // 이미 죽은 상태면 무시  
+        isDead = true;
+
+        gameObject.SetActive(false); // 캐릭터 비활성화
+
         PhotonView pv = GetComponent<PhotonView>();
         if (!PhotonNetwork.IsMasterClient) return;     
         if (pv == null || pv.Owner == null) return;
@@ -254,10 +268,11 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
 
     }
 
+    public void SetInvincible(float second)
+    {
+        invincibleUntil = Time.time + second; // 예: 2초간 무적
+    }
 
-    /// <summary>
-    /// 캐릭터를 잠시 움직이지 못하게 만드는 코루틴
-    /// </summary>
     protected IEnumerator ImmobilizeCharacter()
     {
         isImmobilized = true;
