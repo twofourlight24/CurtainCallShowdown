@@ -157,6 +157,7 @@ MonoBehaviour:
     characterName: "\uACE1\uC608\uC0AC"
     characterDescription: "\uACE1\uC608\uB97C \uD569\uB2C8\uB2E4."
     characterIcon: {fileID: -5928388598093832338, guid: 180b7ecfa86c20345884ca0b08b29b02, type: 3}
+    characterImg: {fileID: 8625526746626988902, guid: 4213c787588c4734caa5d5a7574d9947, type: 3}
     characterPrefab: {fileID: 4096762168184799637}
 --- !u!50 &6329985998784876047
 Rigidbody2D:

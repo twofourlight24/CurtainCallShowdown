@@ -184,6 +184,7 @@ MonoBehaviour:
     characterName: "\uBB34\uC6A9\uC218"
     characterDescription: "\uBB34\uC6A9\uC744 \uD569\uB2C8\uB2E4."
     characterIcon: {fileID: -1227106412723106031, guid: 180b7ecfa86c20345884ca0b08b29b02, type: 3}
+    characterImg: {fileID: 6858169268466840099, guid: def32671463cd9b45a42f84aea1affcd, type: 3}
     characterPrefab: {fileID: 611092333110001771}
 --- !u!114 &264571988000640444
 MonoBehaviour:

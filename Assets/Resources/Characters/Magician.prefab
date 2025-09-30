@@ -166,6 +166,7 @@ MonoBehaviour:
     characterName: "\uB9C8\uC220\uC0AC"
     characterDescription: "\uB9C8\uC220\uC744 \uD558\uB294 \uCE5C\uAD6C\uC785\uB2C8\uB2E4"
     characterIcon: {fileID: -331757192091675316, guid: 180b7ecfa86c20345884ca0b08b29b02, type: 3}
+    characterImg: {fileID: 6323730204194473454, guid: 0e3fed8e179e3ce4aa7c506b66c8e030, type: 3}
     characterPrefab: {fileID: 3109745866346550414}
 --- !u!61 &2585389644310381168
 BoxCollider2D:

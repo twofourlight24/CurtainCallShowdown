@@ -308,6 +308,7 @@ MonoBehaviour:
     characterName: "\uC870\uB828\uC0AC"
     characterDescription: "\uC870\uB828\uC744 \uD569\uB2C8\uB2E4."
     characterIcon: {fileID: 1746626269636736817, guid: 180b7ecfa86c20345884ca0b08b29b02, type: 3}
+    characterImg: {fileID: -7955033314282875701, guid: dadcd226491a07246802b6753536a4cc, type: 3}
     characterPrefab: {fileID: 5881681416687039972}
 --- !u!114 &1170908951240902225
 MonoBehaviour:

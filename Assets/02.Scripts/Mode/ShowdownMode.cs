@@ -57,23 +57,17 @@ public class ShowdownMode : MonoBehaviourPunCallbacks, IGameMode
         if (!roundRunning || !lives.ContainsKey(player)) return;
 
         lives[player] -= 1;
-        gm.uiManager.UpdateLifeUI(player, lives[player]); // 라이프 UI 갱신
-        Debug.Log($"[Showdown] {player.NickName} 사망 → 남은 목숨 {lives[player]}");
+        gm.uiManager.UpdateLifeUI(player, lives[player]);
 
         if (lives[player] > 0)
         {
-            // 리스폰 시작
             if (PhotonNetwork.IsMasterClient)
                 gm.OrderRespawn(player, respawnDelay, invincibleTime);
         }
         else
         {
-            Debug.Log($"[Showdown] {player.NickName} 탈락!");
-
-            // 탈락 처리: 캐릭터 비활성
             var obj = gm.GetCharacterObject(player);
             if (obj) obj.SetActive(false);
-
             CheckForRoundEnd();
         }
     }
@@ -130,8 +124,7 @@ public class ShowdownMode : MonoBehaviourPunCallbacks, IGameMode
 
     public void OnRoundComplete(List<Player> ranking)
     {
-        if (gm.uiManager != null)
-            gm.uiManager.ShowRoundResultUI(ranking);
+        RoundFlowManager.Instance.HandleRoundComplete(ranking);
     }
 
     /// <summary>

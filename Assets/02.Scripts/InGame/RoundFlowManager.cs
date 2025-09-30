@@ -17,10 +17,12 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
 
     [Header("Runtime / Score")]
     public Dictionary<int, int> playerPoints = new();   // ActorNumber -> 누적 포인트
+    public Dictionary<int, int> killCounts = new();     // ActorNumber -> 이번 라운드 킬 수
     public List<Player> lastRanking = new();            // 직전 라운드 순위
 
-    // 포인트 테이블(인원수 4명 가정: 1등 4점, 2등 3점, 3등 2점, 4등 1점)
-    private readonly int[] rankPoints = { 4, 3, 2, 1 };
+    // 순위별 점수 (기존 4,3,2,1 → 기획 반영 50,40,30,20)
+    private readonly int[] rankPoints = { 50, 40, 30, 20 };
+    private readonly int killPoint = 5;
 
     private void Awake()
     {
@@ -31,39 +33,82 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
 
     private void Start()
     {
-        // 룸의 라운드 수/초기 모드/맵 등은 RoomManager & GameManager에서 세팅함
-        // 여기선 누적 포인트 테이블 초기화만 담당
+        // 누적 포인트 초기화
         foreach (var p in PhotonNetwork.PlayerList)
             if (!playerPoints.ContainsKey(p.ActorNumber)) playerPoints[p.ActorNumber] = 0;
 
-        // Room CustomProperties에서 RoundCount 있으면 동기화
+        // Room CustomProperties에서 RoundCount 동기화
         if (PhotonNetwork.CurrentRoom?.CustomProperties != null &&
             PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("RoundCount", out object rc) &&
             rc is int rr)
         {
             totalRounds = rr;
         }
+
+        ResetRoundData();
     }
 
     /// <summary>
-    /// GameManager가 라운드 종료 시 호출: 최종 순위 리스트를 넘겨주면 포인트 계산/권한 배분/다음 라운드 준비를 진행
+    /// 라운드 시작 시 킬카운트 초기화
+    /// </summary>
+    public void ResetRoundData()
+    {
+        killCounts.Clear();
+        foreach (var p in PhotonNetwork.PlayerList)
+            killCounts[p.ActorNumber] = 0;
+    }
+
+    /// <summary>
+    /// Projectile에서 호출: 킬 카운트 기록
+    /// </summary>
+    public void RegisterKill(int killerActor)
+    {
+        if (!killCounts.ContainsKey(killerActor))
+            killCounts[killerActor] = 0;
+        killCounts[killerActor] += 1;
+
+        Debug.Log($"[RoundFlowManager] Actor {killerActor} 킬 기록 {killCounts[killerActor]}");
+    }
+
+    /// <summary>
+    /// GameManager가 라운드 종료 시 호출
     /// </summary>
     public void HandleRoundComplete(List<Player> ranking)
     {
         if (ranking == null || ranking.Count == 0) return;
         lastRanking = ranking.ToList();
 
-        // 1) 포인트 지급
+        // --------------------------
+        // 1) 점수 지급 (순위 + 킬)
+        // --------------------------
+        var roundPoints = new Dictionary<int, int>();
+
         for (int i = 0; i < ranking.Count; i++)
         {
             var p = ranking[i];
-            int point = (i < rankPoints.Length) ? rankPoints[i] : 0; // 4위 이후 0점 처리
-            if (!playerPoints.ContainsKey(p.ActorNumber)) playerPoints[p.ActorNumber] = 0;
-            playerPoints[p.ActorNumber] += point;
+            int actor = p.ActorNumber;
+
+            int baseScore = (i < rankPoints.Length) ? rankPoints[i] : 0;
+            int killBonus = killCounts.TryGetValue(actor, out var kills) ? kills * killPoint : 0;
+            int score = baseScore + killBonus;
+
+            if (!playerPoints.ContainsKey(actor)) playerPoints[actor] = 0;
+            playerPoints[actor] += score;
+
+            roundPoints[actor] = score;
+            Debug.Log($"[RoundFlow] {p.NickName}({actor}) → RoundScore {score}");
+
+            Debug.Log($"[RoundFlow] {p.NickName} : 순위 {baseScore} + 킬 {killBonus} = {score}, 누적 {playerPoints[actor]}");
         }
 
-        // 2) 다음 라운드 권한(1등 → 모드 선택, 4등 → 라운드 이벤트 추가) 및 이벤트 누적
-        //    UI/투표 구현 전까진 "룸 속성 + 랜덤 대체" 로직 제공
+        // --------------------------
+        // 2) UI에 라운드 결과 전달
+        // --------------------------
+        GameManager.Instance.uiManager.ShowRoundResultUI(ranking, roundPoints);
+
+        // --------------------------
+        // 3) 기존 권한 배분/RoomProp 로직 유지
+        // --------------------------
         if (currentRoundIndex < totalRounds - 1)
         {
             var first = ranking[0];
@@ -71,28 +116,22 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
 
             if (PhotonNetwork.IsMasterClient)
             {
-                // (A) 1등이 다음 라운드 모드 선택 ? 우선 Room CustomProperties "NextGameMode"로 반영
-                string suggestedNextMode = SuggestNextModeFallback(); // 간단 랜덤/라운드로빈
+                string suggestedNextMode = SuggestNextModeFallback();
                 SetRoomProp("NextGameMode", suggestedNextMode);
 
-                // (B) 4등이 라운드 이벤트 추가 ? Room CustomProperties "AddRoundEvent"에 ID 기록
-                string newEventId = SuggestNextEventFallback(); // 간단 랜덤
+                string newEventId = SuggestNextEventFallback();
                 SetRoomProp("AddRoundEvent", newEventId);
             }
         }
 
-        // 3) 라운드 종료 → 다음 라운드로 넘어갈지, 최종 결과 낼지 결정
         currentRoundIndex++;
         if (currentRoundIndex >= totalRounds)
         {
-            // 최종 우승자 결정: 최고 포인트
             var final = playerPoints.OrderByDescending(kv => kv.Value).ToList();
             var top = final.First();
             Player winner = PhotonNetwork.PlayerList.First(p => p.ActorNumber == top.Key);
 
-            // UI 표시는 GameManager/UIManager에서 처리
             Debug.Log($"[RoundFlow] Final Winner: {winner.NickName} ({top.Value} pts)");
-            // RoomProp로 발표자/점수 방송
             if (PhotonNetwork.IsMasterClient)
             {
                 SetRoomProp("FinalWinnerNick", winner.NickName);
@@ -102,48 +141,57 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
         }
         else
         {
-            // 다음 라운드 준비 ? RoomProps에 누적 이벤트 반영
             if (PhotonNetwork.IsMasterClient)
             {
-                // 만약 AddRoundEvent가 올라왔다면 누적
                 if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("AddRoundEvent", out object ev) && ev is string evId && !string.IsNullOrEmpty(evId))
                 {
                     stackedRoundEventIds.Add(evId);
-                    // 저장형식: "id1,id2,id3"
                     SetRoomProp("StackedRoundEventsCsv", string.Join(",", stackedRoundEventIds));
-                    // 소모(다음 라운드로 넘겼으니 비움)
                     SetRoomProp("AddRoundEvent", "");
                 }
 
-                // “NextGameMode” → “GameMode”로 채택
                 if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("NextGameMode", out object nm) && nm is string nextMode && !string.IsNullOrEmpty(nextMode))
                 {
                     SetRoomProp("GameMode", nextMode);
                     SetRoomProp("NextGameMode", "");
                 }
 
-                // 다음 라운드로 씬 재시작(캐릭터 재선택 or 그대로 진행 중 하나 선택)
-                // 여기서는 기존 플로우 존중: SelectCharacterScene으로 재이동 → GameScene
-                PhotonNetwork.LoadLevel("SelectCharacterScene");
+                
             }
         }
     }
+    // 누적 점수 스냅샷 반환 (외부에서 마음대로 바꾸지 못하도록 복사본)
+    public Dictionary<int, int> GetTotalPoints()
+    {
+        return new Dictionary<int, int>(playerPoints);
+    }
 
-    // --- 간단 대체 로직(투표 UI 붙이기 전까지 사용) ---
+    // 남은 라운드 수 (음수 방지)
+    public int GetRoundsLeft()
+    {
+        int left = totalRounds - currentRoundIndex;
+        return left < 0 ? 0 : left;
+    }
+
+    // 누적 이벤트 CSV
+    public string GetStackedEventsCsv()
+    {
+        return (stackedRoundEventIds == null || stackedRoundEventIds.Count == 0)
+            ? ""
+            : string.Join(",", stackedRoundEventIds);
+    }
+
+    // --- 간단 대체 로직 ---
     private string SuggestNextModeFallback()
     {
-        // Room에 있는 모드 목록/현재 모드 참고
-        var modes = new[] { "Showdown", "King of the Hill" }; // RoomManager에 이미 2개 사용중  :contentReference[oaicite:0]{index=0}
+        var modes = new[] { "Showdown", "King of the Hill" };
         string current = (string)PhotonNetwork.CurrentRoom.CustomProperties["GameMode"];
-        // current가 Showdown이면 King of the Hill, 아니면 Showdown
         return (current == modes[0]) ? modes[1] : modes[0];
     }
 
     private string SuggestNextEventFallback()
     {
-        // 기획서에 명시된 5개 이벤트 중 랜덤 하나  :contentReference[oaicite:1]{index=1}
         var events = new[] { "Spotlight", "GoldenAward", "HotOnion", "Paparazzi", "StageMalfunction" };
-        // 이미 쌓인 이벤트는 중복 허용(“중첩되는 재미”) ? 중복 허용!  :contentReference[oaicite:2]{index=2}
         int idx = UnityEngine.Random.Range(0, events.Length);
         return events[idx];
     }

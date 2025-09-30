@@ -41,9 +41,12 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
     }
 
     void Start()
@@ -451,19 +454,6 @@ public class GameManager : MonoBehaviourPunCallbacks
         uiManager.UpdateLifeUI(targetPlayer, currentLives);
     }
 
-    public void EndGame(Player winner)
-    {
-        if (PhotonNetwork.CurrentRoom != null)
-        {
-            PhotonNetwork.CurrentRoom.IsOpen = false;
-            PhotonNetwork.CurrentRoom.IsVisible = false;
-        }
-
-        if (winner != null) uiManager.resultText.text = $"승자: {winner.NickName}";
-        else uiManager.resultText.text = "무승부!";
-        uiManager.resultPanel.SetActive(true);
-    }
-
     // 모드가 라운드 결과를 알릴 때 사용 (추후 RoundFlowManager 연동 예정)
     public void EndRound(List<Player> ranking)
     {
@@ -474,7 +464,7 @@ public class GameManager : MonoBehaviourPunCallbacks
         // TODO: RoundFlowManager.Instance?.HandleRoundComplete(ranking); // 라운드 루프 붙일 때 활성화
     }
     [PunRPC]
-    public void RPC_PlayerEliminated(int actorNumber /*, PhotonMessageInfo info 可*/ )
+    public void RPC_PlayerEliminated(int actorNumber /*, PhotonMessageInfo info */ )
     {
         var player = PhotonNetwork.CurrentRoom?.GetPlayer(actorNumber);
         if (player == null)

@@ -49,11 +49,20 @@ public class Projectile : MonoBehaviourPun
             PhotonView targetView = other.GetComponent<PhotonView>();
             if (targetView != null)
             {
-                // RPC로 데미지 전달
+                // 데미지 전달
                 targetView.RPC("RPC_TakeDamage", RpcTarget.AllBuffered, damage);
-            }
 
+                // 킬러/희생자 추적
+                //var victim = targetView.Owner;
+                //var killer = photonView.Owner;
+
+                //if (victim != null && killer != null && killer != victim)
+                //{
+                //    RoundFlowManager.Instance?.RegisterKill(killer.ActorNumber);
+                //}
+            }
             PhotonNetwork.Destroy(gameObject);
         }
     }
+
 }

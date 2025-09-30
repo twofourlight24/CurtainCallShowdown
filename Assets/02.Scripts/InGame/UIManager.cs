@@ -11,8 +11,6 @@ using UnityEngine.UI;
 public class UIManager : MonoBehaviourPunCallbacks
 {
     [Header("UI - In-Game Info")]
-    public GameObject resultPanel;
-    public TMP_Text resultText;
     public GameObject[] playerInfoPanels;
     public Image[] playerIcons;
     public TMP_Text[] playerNicknames;
@@ -22,6 +20,10 @@ public class UIManager : MonoBehaviourPunCallbacks
     [Header("UI - Other")]
     public GameObject respawnOverlayPanel;  // 회색 이미지 패널 (Canvas 안)
     public TMP_Text respawnCountdownText;   // 남은 시간 표시
+
+    [Header("UI - Result Panels")]
+    public RoundResultPanel roundResultPanel;
+    public TotalScorePanel totalScorePanel;
 
     private int GetPlayerIndex(Player target)
     {
@@ -115,16 +117,26 @@ public class UIManager : MonoBehaviourPunCallbacks
         for (int j = 0; j < childCount; j++)
             parent.transform.GetChild(j).gameObject.SetActive(j < currentLives);
     }
-    public void ShowRoundResultUI(List<Player> ranking)
-    {
-        if (resultPanel != null) resultPanel.SetActive(true);
+    // 라운드 결과 보여주기
+public void ShowRoundResultUI(List<Player> ranking, Dictionary<int,int> roundPoints)
+{
+    roundResultPanel.gameObject.SetActive(true);
+    totalScorePanel.gameObject.SetActive(false);
+    roundResultPanel.Bind(ranking, roundPoints, PhotonNetwork.IsMasterClient);
+}
 
-    }
-    public void DisplayEndGameUI(string resultMessage)
+    // 총점 패널 보여주기
+    public void ShowTotalScoreUI(Dictionary<int, int> totalPoints, int roundsLeft, string eventsCsv)
     {
-        resultPanel.SetActive(true);
-        resultText.text = resultMessage;
+        if (totalScorePanel != null)
+        {
+            roundResultPanel.gameObject.SetActive(false);
+            totalScorePanel.gameObject.SetActive(true);
+
+            totalScorePanel.Bind(totalPoints, roundsLeft, eventsCsv, PhotonNetwork.IsMasterClient);
+        }
     }
+
     public void ShowRespawnOverlay(float seconds)
     {
         if (respawnOverlayPanel != null) respawnOverlayPanel.SetActive(true);
