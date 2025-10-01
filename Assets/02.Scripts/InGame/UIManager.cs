@@ -24,6 +24,7 @@ public class UIManager : MonoBehaviourPunCallbacks
     [Header("UI - Result Panels")]
     public RoundResultPanel roundResultPanel;
     public TotalScorePanel totalScorePanel;
+    public GamemodeVotePanel votePanel;
 
     private int GetPlayerIndex(Player target)
     {
@@ -118,12 +119,12 @@ public class UIManager : MonoBehaviourPunCallbacks
             parent.transform.GetChild(j).gameObject.SetActive(j < currentLives);
     }
     // 라운드 결과 보여주기
-public void ShowRoundResultUI(List<Player> ranking, Dictionary<int,int> roundPoints)
-{
-    roundResultPanel.gameObject.SetActive(true);
-    totalScorePanel.gameObject.SetActive(false);
-    roundResultPanel.Bind(ranking, roundPoints, PhotonNetwork.IsMasterClient);
-}
+    public void ShowRoundResultUI(List<Player> ranking, Dictionary<int, int> roundPoints)
+    {
+        roundResultPanel.gameObject.SetActive(true);
+        totalScorePanel.gameObject.SetActive(false);
+        roundResultPanel.Bind(ranking, roundPoints, PhotonNetwork.IsMasterClient);
+    }
 
     // 총점 패널 보여주기
     public void ShowTotalScoreUI(Dictionary<int, int> totalPoints, int roundsLeft, string eventsCsv)
@@ -137,12 +138,30 @@ public void ShowRoundResultUI(List<Player> ranking, Dictionary<int,int> roundPoi
         }
     }
 
+
+    public void OpenGameModeVotePanel()
+    {
+        if (votePanel == null) return;
+        votePanel.gameObject.SetActive(true);
+        votePanel.InitializeFromRoom();
+    }
+
     public void ShowRespawnOverlay(float seconds)
     {
         if (respawnOverlayPanel != null) respawnOverlayPanel.SetActive(true);
         if (respawnCountdownText != null) respawnCountdownText.text = Mathf.CeilToInt(seconds).ToString();
         StopCoroutine("RespawnOverlayRoutine");
         StartCoroutine(RespawnOverlayRoutine(seconds));
+    }
+    public void CloseResultsAndVotePanels()
+    {
+        try
+        {
+            if (roundResultPanel) roundResultPanel.gameObject.SetActive(false);
+            if (totalScorePanel) totalScorePanel.gameObject.SetActive(false);
+            if (votePanel) votePanel.gameObject.SetActive(false);   // GamemodeVotePanel 참조 필드
+        }
+        catch { }
     }
 
     public void HideRespawnOverlay()

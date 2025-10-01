@@ -9,7 +9,7 @@ public class TitleMgr : MonoBehaviour
     {
         startButton.onClick.AddListener(() =>
         {
-            UnityEngine.SceneManagement.SceneManager.LoadScene("WatingRoomScene");
+            UnityEngine.SceneManagement.SceneManager.LoadScene("LobbyScene");
         });
     }
 

@@ -1,3 +1,4 @@
+using Photon.Pun;
 using Photon.Realtime;
 using System.Collections.Generic;
 using TMPro;
@@ -47,8 +48,10 @@ public class RoundResultPanel : MonoBehaviour
                     var totals = rf.GetTotalPoints();
                     int roundsLeft = rf.totalRounds - rf.currentRoundIndex;
                     string eventsCsv = string.Join(",", rf.stackedRoundEventIds);
-
-                    GameManager.Instance.uiManager.ShowTotalScoreUI(totals, roundsLeft, eventsCsv);
+                    if (PhotonNetwork.IsMasterClient)
+                    {
+                        GameManager.Instance.OpenTotalScoreForAllClients();
+                    }
                 });
             }
         }

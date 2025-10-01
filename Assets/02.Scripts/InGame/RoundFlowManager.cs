@@ -11,18 +11,21 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
     public static RoundFlowManager Instance { get; private set; }
 
     [Header("Config")]
-    public int totalRounds = 3;                         // Room 설정과 동기화
-    public int currentRoundIndex = 0;                   // 0-based
-    public List<string> stackedRoundEventIds = new();   // 라운드 이벤트 누적 (ID 문자열)
+    public int totalRounds = 3;                          // 전체 라운드 수
+    public int currentRoundIndex = 0;                    // 현재 라운드 인덱스 (0-based)
+    public List<string> stackedRoundEventIds = new();    // 라운드 이벤트 누적 (ID 문자열)
 
     [Header("Runtime / Score")]
-    public Dictionary<int, int> playerPoints = new();   // ActorNumber -> 누적 포인트
-    public Dictionary<int, int> killCounts = new();     // ActorNumber -> 이번 라운드 킬 수
-    public List<Player> lastRanking = new();            // 직전 라운드 순위
+    public Dictionary<int, int> playerPoints = new();    // ActorNumber -> 누적 점수
+    public Dictionary<int, int> killCounts = new();      // ActorNumber -> 이번 라운드 킬 수
+    public List<Player> lastRanking = new();             // 직전 라운드 순위
 
-    // 순위별 점수 (기존 4,3,2,1 → 기획 반영 50,40,30,20)
+    // 순위별 점수 (기획 반영: 1등 50, 2등 40, 3등 30, 4등 20)
     private readonly int[] rankPoints = { 50, 40, 30, 20 };
     private readonly int killPoint = 5;
+
+    [Header("Modes")]
+    public List<string> allGameModes = new() { "Showdown", "King of the Hill", "TagHunt", "ItemRush", "DodgeRain" };
 
     private void Awake()
     {
@@ -33,9 +36,10 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
 
     private void Start()
     {
-        // 누적 포인트 초기화
+        // 플레이어별 누적 포인트 초기화
         foreach (var p in PhotonNetwork.PlayerList)
-            if (!playerPoints.ContainsKey(p.ActorNumber)) playerPoints[p.ActorNumber] = 0;
+            if (!playerPoints.ContainsKey(p.ActorNumber))
+                playerPoints[p.ActorNumber] = 0;
 
         // Room CustomProperties에서 RoundCount 동기화
         if (PhotonNetwork.CurrentRoom?.CustomProperties != null &&
@@ -49,7 +53,7 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
     }
 
     /// <summary>
-    /// 라운드 시작 시 킬카운트 초기화
+    /// 라운드 시작 시 킬 카운트 초기화
     /// </summary>
     public void ResetRoundData()
     {
@@ -65,8 +69,8 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
     {
         if (!killCounts.ContainsKey(killerActor))
             killCounts[killerActor] = 0;
-        killCounts[killerActor] += 1;
 
+        killCounts[killerActor] += 1;
         Debug.Log($"[RoundFlowManager] Actor {killerActor} 킬 기록 {killCounts[killerActor]}");
     }
 
@@ -78,11 +82,8 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
         if (ranking == null || ranking.Count == 0) return;
         lastRanking = ranking.ToList();
 
-        // --------------------------
-        // 1) 점수 지급 (순위 + 킬)
-        // --------------------------
+        // 1) 점수 계산 (순위 점수 + 킬 보너스)
         var roundPoints = new Dictionary<int, int>();
-
         for (int i = 0; i < ranking.Count; i++)
         {
             var p = ranking[i];
@@ -96,37 +97,19 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
             playerPoints[actor] += score;
 
             roundPoints[actor] = score;
-            Debug.Log($"[RoundFlow] {p.NickName}({actor}) → RoundScore {score}");
-
-            Debug.Log($"[RoundFlow] {p.NickName} : 순위 {baseScore} + 킬 {killBonus} = {score}, 누적 {playerPoints[actor]}");
+            Debug.Log($"[RoundFlow] {p.NickName}({actor}) : 순위 {baseScore} + 킬 {killBonus} = {score}, 누적 {playerPoints[actor]}");
         }
 
-        // --------------------------
         // 2) UI에 라운드 결과 전달
-        // --------------------------
         GameManager.Instance.uiManager.ShowRoundResultUI(ranking, roundPoints);
 
-        // --------------------------
-        // 3) 기존 권한 배분/RoomProp 로직 유지
-        // --------------------------
-        if (currentRoundIndex < totalRounds - 1)
-        {
-            var first = ranking[0];
-            var last = ranking[ranking.Count - 1];
-
-            if (PhotonNetwork.IsMasterClient)
-            {
-                string suggestedNextMode = SuggestNextModeFallback();
-                SetRoomProp("NextGameMode", suggestedNextMode);
-
-                string newEventId = SuggestNextEventFallback();
-                SetRoomProp("AddRoundEvent", newEventId);
-            }
-        }
-
+        // 3) 라운드 카운트 증가
         currentRoundIndex++;
+
+        // 4) 라운드 종료 처리
         if (currentRoundIndex >= totalRounds)
         {
+            // 최종 결과 발표
             var final = playerPoints.OrderByDescending(kv => kv.Value).ToList();
             var top = final.First();
             Player winner = PhotonNetwork.PlayerList.First(p => p.ActorNumber == top.Key);
@@ -141,39 +124,93 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
         }
         else
         {
+            // 이벤트 누적 처리
             if (PhotonNetwork.IsMasterClient)
             {
-                if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("AddRoundEvent", out object ev) && ev is string evId && !string.IsNullOrEmpty(evId))
+                if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("AddRoundEvent", out object ev) &&
+                    ev is string evId && !string.IsNullOrEmpty(evId))
                 {
                     stackedRoundEventIds.Add(evId);
                     SetRoomProp("StackedRoundEventsCsv", string.Join(",", stackedRoundEventIds));
                     SetRoomProp("AddRoundEvent", "");
                 }
-
-                if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("NextGameMode", out object nm) && nm is string nextMode && !string.IsNullOrEmpty(nextMode))
-                {
-                    SetRoomProp("GameMode", nextMode);
-                    SetRoomProp("NextGameMode", "");
-                }
-
-                
             }
+
+            // -----> 여기서 투표 시작 (마스터만)
+            if (PhotonNetwork.IsMasterClient)
+                BeginGameModeVote(3, 30);
         }
     }
-    // 누적 점수 스냅샷 반환 (외부에서 마음대로 바꾸지 못하도록 복사본)
+
+    // ===== 투표 관련 =====
+
+    public void BeginGameModeVote(int optionCount = 3, int durationSec = 30)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        // 옵션 3개 랜덤
+        var options = allGameModes.OrderBy(_ => UnityEngine.Random.value).Take(optionCount).ToList();
+
+        // 이번 라운드 꼴등
+        int lastActor = -1;
+        if (lastRanking != null && lastRanking.Count > 0)
+            lastActor = lastRanking[lastRanking.Count - 1].ActorNumber;
+
+        var room = PhotonNetwork.CurrentRoom;
+        if (room == null) return;
+
+        // 이전 잔여 표 지우기
+        var clear = new PhotonHashtable();
+        foreach (var p in PhotonNetwork.PlayerList)
+            clear[VoteKeyFor(p.ActorNumber)] = "";
+        room.SetCustomProperties(clear);
+
+        // 투표 RoomProps 설정
+        var p2 = new PhotonHashtable
+        {
+            { "VoteActive", true },
+            { "VoteOptions", string.Join(",", options) },
+            { "VoteStartTS", PhotonNetwork.Time }, // 서버 시간
+            { "VoteLastActor", lastActor },
+            { "VoteDone", false },
+            { "VoteWinnerActor", -1 },
+            { "VoteWinnerMode", "" }
+        };
+        room.SetCustomProperties(p2);
+
+        // UI 열기
+        GameManager.Instance?.uiManager?.OpenGameModeVotePanel();
+    }
+
+    public void OnVoteFinishedAndReadyToStartNextRound()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        // NextGameMode 읽기 → GameMode로 채택
+        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("NextGameMode", out var nm) &&
+            nm is string nextMode && !string.IsNullOrEmpty(nextMode))
+        {
+            SetRoomProp("GameMode", nextMode);
+            SetRoomProp("NextGameMode", "");
+        }
+
+        // 다음 라운드 시작 (GameManager가 처리)
+        GameManager.Instance?.BeginNextRoundAfterVote();
+    }
+
+    // ===== 유틸 =====
+
     public Dictionary<int, int> GetTotalPoints()
     {
         return new Dictionary<int, int>(playerPoints);
     }
 
-    // 남은 라운드 수 (음수 방지)
     public int GetRoundsLeft()
     {
         int left = totalRounds - currentRoundIndex;
         return left < 0 ? 0 : left;
     }
 
-    // 누적 이벤트 CSV
     public string GetStackedEventsCsv()
     {
         return (stackedRoundEventIds == null || stackedRoundEventIds.Count == 0)
@@ -181,7 +218,8 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
             : string.Join(",", stackedRoundEventIds);
     }
 
-    // --- 간단 대체 로직 ---
+    static string VoteKeyFor(int actor) => $"VOTE_{actor}";
+
     private string SuggestNextModeFallback()
     {
         var modes = new[] { "Showdown", "King of the Hill" };

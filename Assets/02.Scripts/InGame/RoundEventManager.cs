@@ -69,7 +69,11 @@ public class RoundEventManager : MonoBehaviour
             }
         }
     }
-
+    public void RefreshContext()
+    {
+        // RefreshContext 메서드의 구현 내용을 여기에 추가하세요.
+        Debug.Log("RoundEventManager: Context refreshed.");
+    }
     public void DisableAll()
     {
         foreach (var ev in activeEvents)
