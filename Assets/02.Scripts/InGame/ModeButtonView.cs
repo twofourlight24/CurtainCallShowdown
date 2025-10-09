@@ -5,19 +5,39 @@ using UnityEngine.UI;
 
 public class ModeButtonView : MonoBehaviour
 {
-    [Header("Wiring")]
-    public Button button;                      // Mode 버튼
-    public TMP_Text modeNameText;              // ShowDownText (TMP)
-    public Image selectImg;                    // SelectImg (선정 시 On)
-    public Transform voterGroup;               // PlayerSelectGamemodePanel
-    public GameObject voterEntryTemplate;      // PlayerSelectGamemodeCheck (비활성 템플릿)
+    [Header("Refs")]
+    public Button button;
+    public TMP_Text modeNameText;
+    public Image selectImg;
+    public Transform voterGroup;
+    public GameObject voterEntryTemplate;
 
     [Header("Runtime")]
-    public string modeName;                    // 이 카드가 표현하는 모드 이름
+    public string modeName;
 
     private void Awake()
     {
         if (button == null) button = GetComponent<Button>();
+
+        // 자동 바인딩
+        if (modeNameText == null)
+            modeNameText = transform.Find("ShowDownText")?.GetComponent<TMP_Text>();
+
+        if (selectImg == null)
+            selectImg = transform.Find("SelectImg")?.GetComponent<Image>();
+
+        if (voterGroup == null)
+        {
+            var t = transform.Find("PlayerSelectGamemodePanel");
+            voterGroup = t != null ? t : transform;
+        }
+
+        if (voterEntryTemplate == null && voterGroup != null)
+        {
+            var t = voterGroup.Find("PlayerSelectGamemodeCheck");
+            voterEntryTemplate = t ? t.gameObject : null;
+        }
+
         if (selectImg != null) selectImg.gameObject.SetActive(false);
         if (voterEntryTemplate != null) voterEntryTemplate.SetActive(false);
     }
@@ -27,7 +47,7 @@ public class ModeButtonView : MonoBehaviour
         modeName = mode;
         if (modeNameText != null) modeNameText.text = mode;
         ClearVoters();
-        if (selectImg != null) selectImg.gameObject.SetActive(false);
+        SetSelectedVisual(false);
     }
 
     public void SetOnClick(System.Action<string> onClick)
@@ -43,25 +63,69 @@ public class ModeButtonView : MonoBehaviour
         for (int i = voterGroup.childCount - 1; i >= 0; i--)
         {
             var child = voterGroup.GetChild(i);
-            if (child == voterEntryTemplate?.transform) continue;
+            if (voterEntryTemplate != null && child == voterEntryTemplate.transform) continue;
             Destroy(child.gameObject);
         }
     }
 
-    public void AddVoter(Player p, Sprite icon, Color? nickColor = null, int? actorNumberTag = null)
+    /// 같은 배우가 이미 있으면 업데이트, 없으면 새로 추가
+    public void AddOrUpdateVoter(Player p, Sprite icon, Color nameColor, int actorNumber, bool showX2)
     {
-        if (voterGroup == null || voterEntryTemplate == null) return;
-        var go = Instantiate(voterEntryTemplate, voterGroup);
-        go.SetActive(true);
+        if (voterGroup == null || voterEntryTemplate == null)
+        {
+            Debug.LogError($"[ModeButtonView] voterGroup or voterEntryTemplate missing on {name}");
+            return;
+        }
 
+        // 기존 찾기
+        Transform existing = null;
+        for (int i = 0; i < voterGroup.childCount; i++)
+        {
+            var child = voterGroup.GetChild(i);
+            if (child == voterEntryTemplate.transform) continue;
+            var tag = child.GetComponent<VoterActorTag>();
+            if (tag != null && tag.actorNumber == actorNumber)
+            {
+                existing = child;
+                break;
+            }
+        }
+
+        GameObject go;
+        if (existing != null)
+        {
+            go = existing.gameObject;
+        }
+        else
+        {
+            go = Instantiate(voterEntryTemplate, voterGroup);
+            go.SetActive(true);
+            var tag = go.GetComponent<VoterActorTag>() ?? go.AddComponent<VoterActorTag>();
+            tag.actorNumber = actorNumber;
+        }
+
+        // View 세팅
         var view = go.GetComponent<VoterEntryView>();
         if (view == null) view = go.AddComponent<VoterEntryView>();
-        view.Set(p, icon, nickColor ?? Color.white);
+        view.Set(p, icon, nameColor);
 
-        // 선택사항: 결과 하이라이트용 ActorNumber 태깅
-        var tag = go.GetComponent<VoterActorTag>();
-        if (tag == null) tag = go.AddComponent<VoterActorTag>();
-        tag.actorNumber = actorNumberTag ?? p.ActorNumber;
+        view.SetX2Suffix(showX2);
+    }
+
+    /// 이 버튼에서 해당 배우의 표 UI 제거
+    public void RemoveVoter(int actorNumber)
+    {
+        if (voterGroup == null) return;
+        for (int i = voterGroup.childCount - 1; i >= 0; i--)
+        {
+            var child = voterGroup.GetChild(i);
+            if (child == voterEntryTemplate?.transform) continue;
+            var tag = child.GetComponent<VoterActorTag>();
+            if (tag != null && tag.actorNumber == actorNumber)
+            {
+                Destroy(child.gameObject);
+            }
+        }
     }
 
     public void SetSelectedVisual(bool on)
@@ -69,19 +133,24 @@ public class ModeButtonView : MonoBehaviour
         if (selectImg != null) selectImg.gameObject.SetActive(on);
     }
 
-    // 결과 발표 후, 선정자 닉네임을 하늘색으로 바꾸기
     public void AccentWinnerNick(int winnerActor, Color accentColor)
     {
-        foreach (Transform t in voterGroup)
+        if (voterGroup == null) return;
+        for (int i = 0; i < voterGroup.childCount; i++)
         {
-            if (t == voterEntryTemplate?.transform) continue;
-            var tag = t.GetComponent<VoterActorTag>();
+            var child = voterGroup.GetChild(i);
+            if (child == voterEntryTemplate?.transform) continue;
+            var tag = child.GetComponent<VoterActorTag>();
             if (tag != null && tag.actorNumber == winnerActor)
             {
-                var nameText = t.Find("PlayerNickName")?.GetComponent<TMP_Text>();
+                var nameText = child.Find("PlayerNickName")?.GetComponent<TMP_Text>();
                 if (nameText != null) nameText.color = accentColor;
             }
         }
     }
 }
 
+public class VoterActorTag : MonoBehaviour
+{
+    public int actorNumber;
+}

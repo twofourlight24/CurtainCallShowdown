@@ -37,6 +37,10 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     protected bool isFacingRight = true;
     public GameManager gm;
 
+    //Golden Statue 관련
+    public bool IsGoldenStatue { get; private set; } = false;
+    private Coroutine goldenCo;
+
     public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
         var owner = photonView.Owner;
@@ -266,6 +270,33 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         int actorNumber = pv.Owner.ActorNumber;
         gmPV.RPC(nameof(GameManager.RPC_PlayerEliminated), RpcTarget.All, actorNumber);
 
+    }
+    public void ApplyGoldenStatue(float duration, bool refillHP)
+    {
+        if (goldenCo != null) StopCoroutine(goldenCo);
+        goldenCo = StartCoroutine(Co_Golden(duration, refillHP));
+    }
+
+    private IEnumerator Co_Golden(float duration, bool refillHP)
+    {
+        IsGoldenStatue = true;
+        isImmobilized = true;
+        if (refillHP) CurHp = MaxHp;
+
+        float t = 0f;
+        while (t < duration)
+        {
+            if (CurHp <= 0)
+            {
+                Die();
+                yield break;
+            }
+            t += Time.deltaTime;
+            yield return null;
+        }
+
+        IsGoldenStatue = false;
+        isImmobilized = false;
     }
 
     public void SetInvincible(float second)

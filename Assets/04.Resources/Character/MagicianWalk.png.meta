@@ -245,7 +245,7 @@ TextureImporter:
         width: 498
         height: 596
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -259,28 +259,6 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: MagicianWalk_1
-      rect:
-        serializedVersion: 2
-        x: 850
-        y: 1668
-        width: 14
-        height: 8
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 06ddc0621b0979740800000000000000
-      internalID: 5158750988698180960
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
       name: MagicianWalk_2
       rect:
         serializedVersion: 2
@@ -289,7 +267,7 @@ TextureImporter:
         width: 510
         height: 598
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -303,204 +281,6 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: MagicianWalk_3
-      rect:
-        serializedVersion: 2
-        x: 202
-        y: 1656
-        width: 12
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: aa84d2a9033f45b60800000000000000
-      internalID: 7734073850172623018
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_4
-      rect:
-        serializedVersion: 2
-        x: 146
-        y: 1634
-        width: 16
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 073141071274be100800000000000000
-      internalID: 138282422504788848
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_5
-      rect:
-        serializedVersion: 2
-        x: 800
-        y: 1632
-        width: 24
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: e4dbd5f01e00b4250800000000000000
-      internalID: 5929834300988833102
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_6
-      rect:
-        serializedVersion: 2
-        x: 930
-        y: 1630
-        width: 12
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 33e580e80217adc70800000000000000
-      internalID: 8996627590261792307
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_7
-      rect:
-        serializedVersion: 2
-        x: 98
-        y: 1600
-        width: 16
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: ee31b8deb11c7e200800000000000000
-      internalID: 209348233389609966
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_8
-      rect:
-        serializedVersion: 2
-        x: 156
-        y: 1588
-        width: 8
-        height: 22
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 2ef83ea0f8f0d7fd0800000000000000
-      internalID: -2342699124125364254
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_9
-      rect:
-        serializedVersion: 2
-        x: 882
-        y: 1592
-        width: 14
-        height: 8
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: a14f345919c3c0e50800000000000000
-      internalID: 6776858135257936922
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_10
-      rect:
-        serializedVersion: 2
-        x: 206
-        y: 1572
-        width: 8
-        height: 8
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 4a9c3133d91b75c40800000000000000
-      internalID: 5501060758581266852
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_11
-      rect:
-        serializedVersion: 2
-        x: 802
-        y: 1568
-        width: 8
-        height: 18
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 767ab974b1f8f07a0800000000000000
-      internalID: -6408746397396654233
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
       name: MagicianWalk_12
       rect:
         serializedVersion: 2
@@ -509,7 +289,7 @@ TextureImporter:
         width: 90
         height: 10
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -531,7 +311,7 @@ TextureImporter:
         width: 90
         height: 10
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -545,28 +325,6 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: MagicianWalk_14
-      rect:
-        serializedVersion: 2
-        x: 168
-        y: 1034
-        width: 14
-        height: 8
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 796a30b6c10af3b40800000000000000
-      internalID: 5422228520292296343
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
       name: MagicianWalk_15
       rect:
         serializedVersion: 2
@@ -575,7 +333,7 @@ TextureImporter:
         width: 524
         height: 604
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -592,12 +350,12 @@ TextureImporter:
       name: MagicianWalk_16
       rect:
         serializedVersion: 2
-        x: 938
-        y: 726
-        width: 510
-        height: 598
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 786
+        y: 694
+        width: 662
+        height: 630
+      alignment: 9
+      pivot: {x: 0.75679314, y: 0.48828134}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -611,226 +369,6 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: MagicianWalk_17
-      rect:
-        serializedVersion: 2
-        x: 72
-        y: 1010
-        width: 12
-        height: 12
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 043ae15ce677ef510800000000000000
-      internalID: 1584835436518220608
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_18
-      rect:
-        serializedVersion: 2
-        x: 870
-        y: 1016
-        width: 14
-        height: 8
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 97f10557c06aeb6d0800000000000000
-      internalID: -2972756131579945095
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_19
-      rect:
-        serializedVersion: 2
-        x: 42
-        y: 980
-        width: 10
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 9eae389210dc76bf0800000000000000
-      internalID: -331070642713269527
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_20
-      rect:
-        serializedVersion: 2
-        x: 820
-        y: 976
-        width: 14
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 853e08874bde34a80800000000000000
-      internalID: -8483675913664273576
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_21
-      rect:
-        serializedVersion: 2
-        x: 916
-        y: 968
-        width: 16
-        height: 8
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: f17bc1cc2ec91a1d0800000000000000
-      internalID: -3341216950631221473
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_22
-      rect:
-        serializedVersion: 2
-        x: 124
-        y: 944
-        width: 20
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 7301b2dea09dbc8a0800000000000000
-      internalID: -6283690214113472457
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_23
-      rect:
-        serializedVersion: 2
-        x: 794
-        y: 942
-        width: 16
-        height: 8
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 6fbf12b216228d0f0800000000000000
-      internalID: -1092085108906525706
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_24
-      rect:
-        serializedVersion: 2
-        x: 70
-        y: 918
-        width: 14
-        height: 8
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 3fe568ef750780d30800000000000000
-      internalID: 4397888559361974003
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_25
-      rect:
-        serializedVersion: 2
-        x: 886
-        y: 906
-        width: 18
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 857611e6b5640aed0800000000000000
-      internalID: -2404844842513242280
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_26
-      rect:
-        serializedVersion: 2
-        x: 166
-        y: 874
-        width: 18
-        height: 8
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 8c5d9af6360509330800000000000000
-      internalID: 3715558080586044872
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
       name: MagicianWalk_27
       rect:
         serializedVersion: 2
@@ -839,7 +377,7 @@ TextureImporter:
         width: 90
         height: 10
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -853,50 +391,6 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: MagicianWalk_28
-      rect:
-        serializedVersion: 2
-        x: 1222
-        y: 686
-        width: 90
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 4fab62567ea0a21d0800000000000000
-      internalID: -3374872981810005260
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_29
-      rect:
-        serializedVersion: 2
-        x: 68
-        y: 362
-        width: 18
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: fe03fd02e973ea540800000000000000
-      internalID: 5021011786860540143
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
       name: MagicianWalk_30
       rect:
         serializedVersion: 2
@@ -905,7 +399,7 @@ TextureImporter:
         width: 506
         height: 596
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -919,138 +413,6 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: MagicianWalk_31
-      rect:
-        serializedVersion: 2
-        x: 24
-        y: 320
-        width: 16
-        height: 8
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: e59b8cb54d0e39730800000000000000
-      internalID: 4004791696340072798
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_32
-      rect:
-        serializedVersion: 2
-        x: 148
-        y: 328
-        width: 16
-        height: 6
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: ca2df00b1a42fe840800000000000000
-      internalID: 5255459567026819756
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_33
-      rect:
-        serializedVersion: 2
-        x: 90
-        y: 278
-        width: 20
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: b10dbcc719ad9cc80800000000000000
-      internalID: -8301864119681953765
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_34
-      rect:
-        serializedVersion: 2
-        x: 164
-        y: 264
-        width: 16
-        height: 10
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 7179d96b302bf09c0800000000000000
-      internalID: -3958749818416949481
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_35
-      rect:
-        serializedVersion: 2
-        x: 188
-        y: 236
-        width: 10
-        height: 12
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 253f5b9eafd056dc0800000000000000
-      internalID: -3646492951972547758
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: MagicianWalk_36
-      rect:
-        serializedVersion: 2
-        x: 94
-        y: 212
-        width: 14
-        height: 12
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: cc881de3c1b71d450800000000000000
-      internalID: 6111801530561693900
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
       name: MagicianWalk_37
       rect:
         serializedVersion: 2
@@ -1059,7 +421,7 @@ TextureImporter:
         width: 90
         height: 10
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -1076,7 +438,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 094383951ad6f434ca8dd5bd6c71dfd6
     internalID: 0
     vertices: []
     indices: 

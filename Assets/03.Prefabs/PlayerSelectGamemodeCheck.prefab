@@ -92,8 +92,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 30
-  m_fontSizeBase: 30
+  m_fontSize: 40
+  m_fontSizeBase: 40
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -261,5 +261,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ed3abd9d14c17464eafd9e1c8b33351d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  icon: {fileID: 9123540223030552217}
-  nick: {fileID: 5542434101263989208}
+  iconImage: {fileID: 9123540223030552217}
+  nicknameText: {fileID: 5542434101263989208}

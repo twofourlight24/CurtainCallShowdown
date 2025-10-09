@@ -480,6 +480,18 @@ public class GameManager : MonoBehaviourPunCallbacks
             showdown.OnPlayerEliminated(player);
     }
 
+    public void OpenGameModeVotePanelForAll()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        photonView.RPC(nameof(RPC_OpenGameModeVotePanelForAll), RpcTarget.All);
+    }
+
+    [PunRPC]
+    private void RPC_OpenGameModeVotePanelForAll()
+    {
+        uiManager?.OpenGameModeVotePanel();   // 내부에서 votePanel.InitializeFromRoom() 호출
+    }
+
     // === 다음 라운드 시작(투표 종료 이후) ===
 
     /// <summary>

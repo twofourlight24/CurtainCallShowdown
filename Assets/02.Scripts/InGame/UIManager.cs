@@ -15,6 +15,7 @@ public class UIManager : MonoBehaviourPunCallbacks
     public Image[] playerIcons;
     public TMP_Text[] playerNicknames;
     public Image[] playerHpBars;
+    public Color defaultHpBarColor = Color.green;
     public GameObject[] playerLifeIconsParent;
 
     [Header("UI - Other")]
@@ -25,6 +26,8 @@ public class UIManager : MonoBehaviourPunCallbacks
     public RoundResultPanel roundResultPanel;
     public TotalScorePanel totalScorePanel;
     public GamemodeVotePanel votePanel;
+
+
 
     private int GetPlayerIndex(Player target)
     {
@@ -138,12 +141,49 @@ public class UIManager : MonoBehaviourPunCallbacks
         }
     }
 
+    public void SetHpBarColor(Player target, Color c)
+    {
+        int idx = System.Array.FindIndex(Photon.Pun.PhotonNetwork.PlayerList, p => p == target);
+        if (idx < 0 || idx >= playerHpBars.Length) return;
+        if (playerHpBars[idx] != null) playerHpBars[idx].color = c;
+    }
+
+    public void ResetHpBarColor(Player target)
+    {
+        SetHpBarColor(target, defaultHpBarColor);
+    }
 
     public void OpenGameModeVotePanel()
     {
         if (votePanel == null) return;
         votePanel.gameObject.SetActive(true);
+        StartCoroutine(Co_OpenVoteWhenPropsReady());
         votePanel.InitializeFromRoom();
+    }
+    private System.Collections.IEnumerator Co_OpenVoteWhenPropsReady()
+    {
+        float timeout = 2.0f;
+        float elapsed = 0f;
+
+        while (elapsed < timeout)
+        {
+            if (PhotonNetwork.CurrentRoom != null &&
+                PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey("VoteOptions") &&
+                PhotonNetwork.CurrentRoom.CustomProperties["VoteOptions"] is string voteStr &&
+                !string.IsNullOrEmpty(voteStr))
+            {
+                // 옵션이 세팅됨 → 이제 패널 초기화 가능
+                Debug.Log("[UI] VoteOptions ready. Opening panel.");
+                votePanel.InitializeFromRoom();
+                yield break;
+            }
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        Debug.LogWarning("[UI] VoteOptions not ready; fallback initialize.");
+        votePanel.InitializeFromRoom(); // 그래도 열어줌 (디버그용)
     }
 
     public void ShowRespawnOverlay(float seconds)

@@ -1,16 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-
-/// <summary>라운드 이벤트가 구현해야 하는 최소 인터페이스</summary>
-public interface IRoundEvent
-{
-    string Id { get; }                    // "Spotlight", "GoldenAward" 등
-    string DisplayName { get; }           // UI 노출 이름
-    void EnableEvent(RoundEventContext ctx);
-    void DisableEvent(RoundEventContext ctx);
-}
-
-/// <summary>이벤트들이 공통으로 참조할 컨텍스트 (맵, 영역, 플레이어/점수 접근 등)</summary>
 public class RoundEventContext
 {
     public GameManager gm;        // 캐릭터/플레이어 접근, UI 갱신 등  :contentReference[oaicite:5]{index=5}
@@ -104,15 +93,6 @@ public class SpotlightEvent : IRoundEvent
     {
         // 조명/후처리 원복
     }
-}
-
-// 특정 단원 타격시 추가 점수 ? 점수 소진시 해제  :contentReference[oaicite:9]{index=9}
-public class GoldenAwardEvent : IRoundEvent
-{
-    public string Id => "GoldenAward";
-    public string DisplayName => "골든어워드";
-    public void EnableEvent(RoundEventContext ctx) { /* TODO */ }
-    public void DisableEvent(RoundEventContext ctx) { /* TODO */ }
 }
 
 // 15초마다 5번 폭발, 맞을수록 데미지 증가 ? 마지막으로 친 사람에게 귀속  :contentReference[oaicite:10]{index=10}

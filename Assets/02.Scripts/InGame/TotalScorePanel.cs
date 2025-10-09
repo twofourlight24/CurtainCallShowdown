@@ -23,12 +23,10 @@ public class TotalScorePanel : MonoBehaviour
     public Button startVoteButtonForMaster;
     public GameObject guestText;
 
-    // 투표 중복 시작 방지
     private bool voteStarted = false;
 
     public void Bind(Dictionary<int, int> totalPoints, int roundsLeft, string eventsCsv, bool isMaster)
     {
-        // 랭킹 정렬 및 표시
         var ordered = totalPoints.OrderByDescending(kv => kv.Value).ToList();
 
         for (int i = 0; i < rows.Length; i++)
@@ -46,38 +44,43 @@ public class TotalScorePanel : MonoBehaviour
         roundsLeftText.text = $"남은 라운드: {roundsLeft}";
         stackedEventsText.text = string.IsNullOrEmpty(eventsCsv) ? "이벤트 없음" : eventsCsv;
 
-        // 마스터/게스트 분기
         startVoteButtonForMaster.gameObject.SetActive(isMaster);
         guestText.SetActive(!isMaster);
 
-        // 버튼 연결 (매번 새로 바인딩)
         startVoteButtonForMaster.onClick.RemoveAllListeners();
         if (isMaster)
         {
-            startVoteButtonForMaster.onClick.AddListener(OnClickStartVoteAsMaster);
-            // 혹시 이전 라운드에서 남은 상태가 있으면 초기화
             voteStarted = false;
             startVoteButtonForMaster.interactable = true;
+            startVoteButtonForMaster.onClick.AddListener(OnClickStartVoteAsMaster);
         }
     }
 
+    // TotalScorePanel.cs
     private void OnClickStartVoteAsMaster()
     {
-        if (voteStarted) return; // 중복 방지
+        if (voteStarted) return;
         if (!PhotonNetwork.IsMasterClient) return;
-
         voteStarted = true;
         startVoteButtonForMaster.interactable = false;
 
-        // 1) 라운드 투표 시작 (옵션 3개, 30초 타이머)
-        RoundFlowManager.Instance?.BeginGameModeVote(3, 20);
+        // 1) 투표 세션 생성 (RoomProps 세팅)
+        RoundFlowManager.Instance?.BeginGameModeVote(3, 30);
 
-        // 2) 내 화면에서 총점 패널 닫고 투표 패널 열기
-        var ui = GameManager.Instance?.uiManager;
-        if (ui != null)
-        {
-            gameObject.SetActive(false);           // TotalScorePanel 닫기
-            ui.OpenGameModeVotePanel();            // 내부에서 votePanel.InitializeFromRoom() 호출
-        }
+        // 2) 방장 로컬 즉시 열기 (레이스 방지)
+        GameManager.Instance?.uiManager?.OpenGameModeVotePanel();
+
+        // 3) 모두에게 열기 (RPC)
+        GameManager.Instance?.OpenGameModeVotePanelForAll();
+
+        // 4) 한 프레임 뒤 Total만 닫기 (상위 캔버스/패널은 건들지 않음)
+        StartCoroutine(CloseAfterFrame());
     }
+
+    private System.Collections.IEnumerator CloseAfterFrame()
+    {
+        yield return null;
+        gameObject.SetActive(false);  // ★ 부모/Canvas 끄지 말 것!
+    }
+
 }

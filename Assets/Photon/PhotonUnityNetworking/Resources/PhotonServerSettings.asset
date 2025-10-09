@@ -50,6 +50,8 @@ MonoBehaviour:
   - RPC_OrderRespawn
   - RPC_BeginNextRound
   - RPC_OpenTotalScoreForAllClients
+  - RPC_OpenGameModeVotePanelForAll
+  - RPC_ActivateGoldenAward
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

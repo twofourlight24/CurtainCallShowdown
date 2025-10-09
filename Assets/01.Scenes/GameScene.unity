@@ -6545,15 +6545,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   modeButtonParent: {fileID: 1716998939}
-  modeButtonPrefab: {fileID: 3044613291422554113, guid: cd06a513623bf004182d17a0f4f3fe6d, type: 3}
-  playerInfoPrefab: {fileID: 3810241278704587142, guid: 6a50a4a77a0ac83489e61c72c04c7868, type: 3}
+  modeButtonTemplate: {fileID: 3044613291422554113, guid: cd06a513623bf004182d17a0f4f3fe6d, type: 3}
   timerText: {fileID: 610003920}
   waitingVotePanel: {fileID: 309554523}
-  waitingVoteResultText: {fileID: 1934104384}
-  waitingVotePanelCanvas: {fileID: 0}
+  voteResultText: {fileID: 1934104384}
   lastPlaceNickColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   chosenPlayerNickColor: {r: 0, g: 1, b: 0.89019614, a: 1}
-  activeOptions: []
 --- !u!1 &1243334628
 GameObject:
   m_ObjectHideFlags: 0
@@ -10911,6 +10908,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1934104382}
   m_CullTransparentMesh: 1
+--- !u!1 &1964889176
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1964889177}
+  m_Layer: 0
+  m_Name: RoundEventManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1964889177
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1964889176}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -6.2643027, y: -3.4622958, z: 5.0933595}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1965275435
 GameObject:
   m_ObjectHideFlags: 0
@@ -10997,6 +11025,7 @@ MonoBehaviour:
   - {fileID: 1434300118}
   - {fileID: 593980936}
   - {fileID: 1601963528}
+  defaultHpBarColor: {r: 0, g: 1, b: 0, a: 1}
   playerLifeIconsParent: []
   respawnOverlayPanel: {fileID: 293897481}
   respawnCountdownText: {fileID: 1590005399}
@@ -11322,3 +11351,4 @@ SceneRoots:
   - {fileID: 299891108}
   - {fileID: 1979150928}
   - {fileID: 372358589}
+  - {fileID: 1964889177}
