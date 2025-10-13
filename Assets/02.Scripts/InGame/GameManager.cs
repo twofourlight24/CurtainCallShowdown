@@ -16,16 +16,16 @@ public class GameManager : MonoBehaviourPunCallbacks
     // UIManager 참조
     public UIManager uiManager;
 
+    [Header("Scene Reload Options")]
+    public bool useSceneReload = true;                 // 재로딩 모드 ON/OFF
+    public string gameplaySceneName = "GameScene";     // 빌드에 등록된 게임 씬 이름
+
     [Header("Game Spawning & References")]
     public Transform[] spawnPoints;
 
     // 캐릭터 프리팹 캐시(Resources/Characters)
     private readonly Dictionary<string, GameObject> characterPrefabs = new();
-
-    // 플레이어별 캐릭터 오브젝트
     private readonly Dictionary<string, GameObject> playerCharacters = new();
-
-    // 플레이어별 스폰 여부
     private readonly Dictionary<string, bool> playersSpawned = new();
 
     // 현재 활성 게임모드 (인터페이스)
@@ -40,6 +40,8 @@ public class GameManager : MonoBehaviourPunCallbacks
     private string mapName;
     private GameObject currentMap;
 
+    private bool isRoundRunning = false;
+    private bool inputLocked = false;
     private void Awake()
     {
         // DontDestroyOnLoad를 쓰지 않음: PhotonView ID 중복 방지 (씬마다 존재하는 씬 오브젝트로 운영)
@@ -49,25 +51,39 @@ public class GameManager : MonoBehaviourPunCallbacks
             return;
         }
         Instance = this;
+        PhotonNetwork.AutomaticallySyncScene = true;
     }
 
     private void Start()
     {
         if (uiManager == null)
         {
-            Debug.LogError("UIManager를 찾을 수 없습니다. GameManager의 uiManager를 할당해주세요.");
-            return;
+            uiManager = FindFirstObjectByType<UIManager>();
+            if (uiManager == null)
+            {
+                Debug.LogError("[GameManager] UIManager reference missing!");
+                return;
+            }
         }
-
-        // playersSpawned 초기값
+        // --- 새 씬에서 항상 초기화 ---
+        playerCharacters.Clear();
+        playersSpawned.Clear();
         foreach (var p in PhotonNetwork.PlayerList)
             if (!playersSpawned.ContainsKey(p.NickName)) playersSpawned[p.NickName] = false;
 
         LoadCharacterPrefabs();
         LoadGameSettings();
+
+        // 라운드/점수/이벤트 복원 (씬 재로딩 직후에도 일관 상태 유지)
+        RoundFlowManager.Instance?.RestorePersistentStateFromRoom();
+
+        // 인게임 UI 초기화
         uiManager.InitializeInGameUI();
 
+        // 맵 스폰 → 스폰포인트 확보 → 모드 초기화 → 캐릭터 스폰 → 스타트패널
         StartCoroutine(InitializeGameAfterMapLoaded());
+
+        StartCoroutine(RebuildCharactersCacheDelayed());
     }
 
     // === 맵/스폰 세팅 ===
@@ -104,20 +120,34 @@ public class GameManager : MonoBehaviourPunCallbacks
 
         // 3) 모드 초기화 + 라운드 시작 준비
         InitializeGameModeAfterMapLoaded();
+
+        // 누적 라운드 이벤트 적용
+        RoundEventManager.Instance?.EnableStackedEvents(RoundFlowManager.Instance?.stackedRoundEventIds);
+
+        // 스타트 패널을 모두에게 띄우고 카운트다운 → 시작
+        var brief = currentActiveGameMode?.GetBriefDescription() ?? "";
+        photonView.RPC(nameof(RPC_ShowStartPanel), RpcTarget.All, currentActiveGameMode?.ModeName ?? "Showdown", brief);
+
     }
 
+
     [PunRPC]
-    private void RPC_OnMapInstantiated()
-    {
-        Debug.Log("[Client] Received RPC_OnMapInstantiated from master.");
-        StartCoroutine(WaitForSpawnPointsAndThenSpawn());
-    }
+    private void RPC_OnMapInstantiated() => StartCoroutine(WaitForSpawnPointsAndThenSpawn());
 
     private IEnumerator WaitForSpawnPointsAndThenSpawn()
     {
-        yield return StartCoroutine(WaitForSpawnPoints(timeoutSeconds: 8f));
+        yield return StartCoroutine(WaitForSpawnPoints(8f));
         InitializeGameModeAfterMapLoaded();
+
+        TrySpawnIfAlreadySelected();
+        StartCoroutine(WaitForCharacterSelectionAndSpawn());
+
+        RoundEventManager.Instance?.EnableStackedEvents(RoundFlowManager.Instance?.stackedRoundEventIds);
+
+        var brief = currentActiveGameMode?.GetBriefDescription() ?? "";
+        photonView.RPC(nameof(RPC_ShowStartPanel), RpcTarget.All, currentActiveGameMode?.ModeName ?? "Showdown", brief);
     }
+
 
     private IEnumerator WaitForSpawnPoints(float timeoutSeconds = 5f)
     {
@@ -153,6 +183,7 @@ public class GameManager : MonoBehaviourPunCallbacks
         }
 
         currentActiveGameMode.Initialize(this);
+        isRoundRunning = false;
 
         // 선택 씬에서 이미 캐릭터 선택 완료 상태면 즉시 스폰 시도
         TrySpawnIfAlreadySelected();
@@ -161,7 +192,7 @@ public class GameManager : MonoBehaviourPunCallbacks
         StartCoroutine(WaitForCharacterSelectionAndSpawn());
 
         // 라운드 시작(모드가 필요 시 타이머/룰 세팅)
-        currentActiveGameMode.StartRound();
+        OpenStartPanelForAll();
     }
 
     private IGameMode CreateOrGetGameModeComponent(string modeName, out MonoBehaviour rawComponent)
@@ -196,12 +227,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 
         StartCoroutine(DeferredUpdateUI(owner)); // 한 프레임 뒤 UI 안정 갱신
     }
-
-    private IEnumerator DeferredUpdateUI(Player p)
-    {
-        yield return null; // PhotonView.Owner 세팅 등 대기
-        UpdatePlayerUI(p);
-    }
+    private IEnumerator DeferredUpdateUI(Player p) { yield return null; UpdatePlayerUI(p); }
 
     // === 스폰 / 리스폰 ===
 
@@ -220,6 +246,12 @@ public class GameManager : MonoBehaviourPunCallbacks
         }
     }
 
+    public IEnumerator WaitForCharacterSelectionAndSpawn()
+    {
+        var local = PhotonNetwork.LocalPlayer;
+        while (!playersSpawned.ContainsKey(local.NickName) || !playersSpawned[local.NickName])
+            yield return null;
+    }
     private int GetRandomSpawnIndex()
     {
         if (spawnPoints == null || spawnPoints.Length == 0) return 0;
@@ -284,17 +316,13 @@ public class GameManager : MonoBehaviourPunCallbacks
                 cb.SetInvincible(invincibleTime);
             }
             playerCharacters[PhotonNetwork.LocalPlayer.NickName] = newChar;
+            EnsurePlayerInputBinding(newChar);
+            
+
         }
 
         uiManager?.HideRespawnOverlay();
         UpdatePlayerUI(PhotonNetwork.LocalPlayer);
-    }
-
-    public IEnumerator WaitForCharacterSelectionAndSpawn()
-    {
-        var local = PhotonNetwork.LocalPlayer;
-        while (!playersSpawned.ContainsKey(local.NickName) || !playersSpawned[local.NickName])
-            yield return null;
     }
 
     // === 포톤 콜백 ===
@@ -341,56 +369,64 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     private void SpawnLocalPlayer()
     {
-        var local = PhotonNetwork.LocalPlayer;
+        StartCoroutine(Co_SpawnLocalPlayerSafe());
+    }
 
-        if (playersSpawned.TryGetValue(local.NickName, out bool already) && already)
+    private IEnumerator Co_SpawnLocalPlayerSafe()
+    {
+        var me = PhotonNetwork.LocalPlayer;
+
+        // 이미 스폰되어 있으면 무시
+        if (playersSpawned.TryGetValue(me.NickName, out bool done) && done)
+            yield break;
+
+        // 커스텀 프로퍼티가 확실히 들어올 때까지 잠깐 대기
+        string prefabName = null;
+        float t = 0f;
+        while (t < 3f) // 3초 한도
         {
-            Debug.Log("[GameManager] 이미 스폰됨 (중복 방지)");
-            return;
+            if (me.CustomProperties != null &&
+                me.CustomProperties.TryGetValue("SelectedCharacterName", out object v) &&
+                v is string s && !string.IsNullOrEmpty(s))
+            {
+                prefabName = s;
+                break;
+            }
+            t += Time.deltaTime;
+            yield return null;
+        }
+        if (string.IsNullOrEmpty(prefabName))
+        {
+            Debug.LogWarning("[GameManager] SelectedCharacterName not ready. Delaying spawn.");
+            yield break; // 잘못된 기본값으로 스폰하지 않음
         }
 
         if (spawnPoints == null || spawnPoints.Length == 0)
         {
-            Debug.LogError("[GameManager] spawnPoints 비어있음");
-            return;
+            Debug.LogError("[GameManager] spawnPoints empty.");
+            yield break;
         }
 
-        if (!local.CustomProperties.TryGetValue("SelectedCharacterName", out object selectedObj))
+        int spawnIndex = (me.ActorNumber - 1) % spawnPoints.Length;
+        Vector3 pos = spawnPoints[spawnIndex].position;
+        Quaternion rot = spawnPoints[spawnIndex].rotation;
+
+        var go = PhotonNetwork.Instantiate("Characters/" + prefabName, pos, rot);
+        if (go != null)
         {
-            Debug.LogError($"플레이어 {local.NickName}의 SelectedCharacterName이 설정되어 있지 않습니다.");
-            return;
-        }
-
-        string characterPrefabName = (string)selectedObj;
-        if (string.IsNullOrEmpty(characterPrefabName) || !characterPrefabs.ContainsKey(characterPrefabName))
-        {
-            Debug.LogError($"유효하지 않은 캐릭터 프리팹 이름: {characterPrefabName}");
-            return;
-        }
-
-        int spawnIndex = (local.ActorNumber - 1) % spawnPoints.Length;
-        Vector3 spawnPos = spawnPoints[spawnIndex].position;
-        Quaternion spawnRot = spawnPoints[spawnIndex].rotation;
-
-        Debug.Log($"[GameManager] Spawn {local.NickName} at {spawnIndex}");
-
-        GameObject characterObject = PhotonNetwork.Instantiate("Characters/" + characterPrefabName, spawnPos, spawnRot);
-        if (characterObject != null)
-        {
-            var characterBase = characterObject.GetComponent<CharacterBase>();
-            if (characterBase != null && characterObject.GetPhotonView().IsMine)
+            var cb = go.GetComponent<CharacterBase>();
+            if (cb != null)
             {
-                characterBase.CurHp = characterBase.MaxHp;
-                characterBase.SetInvincible(2);
+                // 확실하게 풀체력 + 단기 무적
+                cb.CurHp = cb.MaxHp;
+                if (go.GetPhotonView().IsMine)
+                    cb.SetInvincible(2f);
             }
+            EnsurePlayerInputBinding(go);
 
-            playerCharacters[local.NickName] = characterObject;
-            playersSpawned[local.NickName] = true;
-            UpdatePlayerUI(local);
-        }
-        else
-        {
-            Debug.LogError("[GameManager] PhotonNetwork.Instantiate가 null 반환");
+            playerCharacters[me.NickName] = go;
+            playersSpawned[me.NickName] = true;
+            UpdatePlayerUI(me);
         }
     }
 
@@ -460,8 +496,7 @@ public class GameManager : MonoBehaviourPunCallbacks
         // 모드 종료 콜백
         currentActiveGameMode?.EndRound();
 
-        // 점수/투표 등 라운드 종결은 RoundFlowManager가 담당
-        RoundFlowManager.Instance?.HandleRoundComplete(ranking);
+        currentActiveGameMode?.OnRoundComplete(ranking);
     }
 
     // === 킬/사망 ===
@@ -494,64 +529,119 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     // === 다음 라운드 시작(투표 종료 이후) ===
 
-    /// <summary>
-    /// 투표가 끝나고(결과 확정 + 5초 대기) 라운드 재시작을 트리거.
-    /// 마스터만 호출 / 모든 클라이언트에 RPC로 브로드캐스트.
-    /// </summary>
     public void BeginNextRoundAfterVote()
     {
-        if (!PhotonNetwork.IsMasterClient) return;
+        StartCoroutine(Co_BeginNextRoundAfterVote());
+    }
 
-        // 룸 속성에서 선정된 게임모드 읽기 (없으면 Showdown)
-        string modeName = "Showdown";
-        var props = PhotonNetwork.CurrentRoom?.CustomProperties;
-        if (props != null && props.TryGetValue("GameMode", out object gmNameObj))
+    private IEnumerator Co_BeginNextRoundAfterVote()
+    {
+        photonView.RPC(nameof(RPC_CloseAllGamePanels), RpcTarget.All);
+        uiManager?.CloseResultsAndVotePanels();
+
+        yield return null;
+        if (!PhotonNetwork.IsMasterClient) yield break;
+
+        if (!PhotonNetwork.AutomaticallySyncScene)
+            PhotonNetwork.AutomaticallySyncScene = true;
+
+        // 1) 모드 확정값 반영
+        string modeFromRoom = null;
+        if (PhotonNetwork.CurrentRoom?.CustomProperties != null &&
+            PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("GameMode", out var gm) &&
+            gm is string ms && !string.IsNullOrEmpty(ms))
         {
-            if (gmNameObj is string gmName && !string.IsNullOrEmpty(gmName))
-                modeName = gmName;
+            modeFromRoom = ms;
         }
 
-        photonView.RPC(nameof(RPC_BeginNextRound), RpcTarget.All, modeName, RoundFlowManager.Instance?.currentRoundIndex ?? 0);
+        if (useSceneReload)
+        {
+            if (PhotonNetwork.IsMasterClient)
+            {
+                // 투표/룰렛 흔적 정리
+                var ht = new PhotonHashtable
+                {
+                    { "VoteActive", false }, { "VoteDone", false },
+                    { "LotteryDone", false }, { "LotteryOptions", "" }, { "LotteryWinner", "" }
+                };
+                PhotonNetwork.CurrentRoom.SetCustomProperties(ht);
+
+                PhotonNetwork.IsMessageQueueRunning = true;
+                PhotonNetwork.LoadLevel(gameplaySceneName);
+            }
+            yield break;
+        }
+
+        if (string.IsNullOrEmpty(modeFromRoom))
+        {
+            Debug.LogWarning("[GM] No GameMode in room properties; keep current.");
+            modeFromRoom = currentActiveGameMode?.ModeName ?? "Showdown";
+        }
+
+        // 2) 기존 모드 컴포넌트 정리 후 재장착(또는 재초기화)
+        LoadGameSettings(); // GameMode 읽어오기
+        currentActiveGameMode = CreateOrGetGameModeComponent(gameMode, out currentGameModeComponent);
+        currentActiveGameMode?.Initialize(this);
+
+        // 3) 이벤트 누적 반영
+        RoundEventManager.Instance?.EnableStackedEvents(
+            RoundFlowManager.Instance?.stackedRoundEventIds
+        );
+
+        // 4) 라운드 데이터 리셋(킬 카운트 등)
+        RoundFlowManager.Instance?.ResetRoundData();
+
+        // 5) 모든 플레이어 캐릭터 재스폰 준비
+        //    로컬 클라: 내 캐릭터 있으면 파괴 → 선택 캐릭터 기준 즉시 재스폰
+        var my = PhotonNetwork.LocalPlayer;
+        var mineGo = GetCharacterObject(my);
+        if (mineGo)
+        {
+            var pv = mineGo.GetPhotonView();
+            if (pv && pv.IsMine) PhotonNetwork.Destroy(mineGo);
+        }
+        // 잠깐 대기 후 스폰
+        yield return new WaitForSeconds(0.1f);
+        SpawnLocalPlayer(); // 내부에서 SelectedCharacterName으로 재생성 + 무적 2초
+
+        // 6) 전원 준비 대기(간단히 0.5 ~ 1초 정도 유예)
+        yield return new WaitForSeconds(0.5f);
+
+        // 7) 패널 오픈(RPC) → 각자 패널 코루틴 끝에서 StartRound() 실행
+        var desc = currentActiveGameMode?.GetBriefDescription() ?? "";
+        photonView.RPC(nameof(RPC_ShowStartPanel), RpcTarget.All, modeFromRoom, desc);
+    }
+    [PunRPC]
+    private void RPC_CloseAllGamePanels()
+    {
+        uiManager?.CloseResultsAndVotePanels();
     }
 
     [PunRPC]
-    private void RPC_BeginNextRound(string modeName, int roundIndex)
+    private void RPC_ShowStartPanel(string modeName, string desc)
     {
-        Debug.Log($"[GameManager] BeginNextRound: round={roundIndex + 1}, mode={modeName}");
-
-        // 1) UI 정리
-        try
-        {
-            if (uiManager != null)
-            {
-                // UIManager에 CloseResultsAndVotePanels() 유틸을 추가해 두는 것을 권장
-                uiManager.CloseResultsAndVotePanels();
-                uiManager.ActivatePanelsForAllPlayers();
-            }
-        }
-        catch { }
-
-        // 2) 라운드 데이터 리셋 (킬 카운트 등)
-        RoundFlowManager.Instance?.ResetRoundData();
-
-        // 3) 선택된 모드로 세팅
-        SetupGameModeByName(modeName);
-
-        // 4) 라운드 이벤트 스택 재적용 (있다면)
-        try
-        {
-            RoundEventManager.Instance?.RefreshContext();
-            RoundEventManager.Instance?.EnableStackedEvents(RoundFlowManager.Instance?.stackedRoundEventIds);
-        }
-        catch { }
-
-        // 5) 전원 리스폰 (마스터만)
-        if (PhotonNetwork.IsMasterClient)
-        {
-            foreach (var p in PhotonNetwork.PlayerList)
-                OrderRespawn(p, 0.1f, 2f); // 소폭 지연 + 2초 무적
-        }
+        SetInputLocked(true);
+        // 모든 클라에서 가이드/카운트다운 UI 표시.
+        uiManager?.OpenStartGamePanel(modeName, desc);
     }
+
+    public void NotifyStartPanelFinished()
+    {
+        if (isRoundRunning) return;
+        isRoundRunning = true;
+        SetInputLocked(false);
+        currentActiveGameMode?.StartRound();
+    }
+
+    // 첫 라운드 & 매 라운드 공통 진입점
+    private void OpenStartPanelForAll()
+    {
+        var modeName = currentActiveGameMode?.ModeName ?? "Unknown";
+        var desc = currentActiveGameMode?.GetBriefDescription() ?? "";
+        photonView.RPC(nameof(RPC_ShowStartPanel), RpcTarget.All, modeName, desc);
+    }
+
+
     public void OpenTotalScoreForAllClients()
     {
         if (!PhotonNetwork.IsMasterClient) return;
@@ -616,7 +706,28 @@ public class GameManager : MonoBehaviourPunCallbacks
 
         Debug.Log($"[GameManager] GameMode set → {modeName}");
     }
+    public void SetInputLocked(bool locked)
+    {
+        inputLocked = locked;
+        ApplyInputLockToLocal();
+    }
 
+    private void ApplyInputLockToLocal()
+    {
+        var my = GetCharacterObject(PhotonNetwork.LocalPlayer);
+        if (my == null) return;
+
+        // 로컬 입력 스크립트 비활성화 (이름이 PlayerInput이라고 가정)
+        var pi = my.GetComponent<PlayerInput>();
+        if (pi != null) pi.enabled = !inputLocked;
+
+        // 움직임 고정 보정 (선택)
+        var rb = my.GetComponent<Rigidbody2D>();
+        if (rb != null && inputLocked)
+        {
+            rb.linearVelocity = Vector2.zero;
+        }
+    }
     // === 조회 유틸 ===
 
     public GameObject GetCharacterObject(Player p)
@@ -631,5 +742,27 @@ public class GameManager : MonoBehaviourPunCallbacks
             if (pv?.Owner == p) return cb.gameObject;
         }
         return null;
+    }
+    private IEnumerator RebuildCharactersCacheDelayed()
+    {
+        // 씬 내 오브젝트가 모두 올라올 때까지 잠깐 대기
+        yield return new WaitForSeconds(0.5f);
+
+        var all = GameObject.FindObjectsByType<CharacterBase>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        foreach (var cb in all)
+        {
+            var pv = cb.GetComponent<PhotonView>();
+            if (pv != null && pv.Owner != null)
+                RegisterCharacter(pv.Owner, cb.gameObject);
+        }
+    }
+    private void EnsurePlayerInputBinding(GameObject go)
+    {
+        if (!go) return;
+
+        var cb = go.GetComponent<CharacterBase>();
+        var input = go.GetComponent<PlayerInput>();
+        if (!input) input = go.AddComponent<PlayerInput>();
+        input.SetCharacter(cb);
     }
 }

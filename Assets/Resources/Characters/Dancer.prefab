@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: 8104213946268203393}
   - component: {fileID: -692701139963263900}
   - component: {fileID: 7485213081243620986}
+  - component: {fileID: 2886514117448565804}
   m_Layer: 0
   m_Name: Dancer
   m_TagString: Player
@@ -226,6 +227,8 @@ MonoBehaviour:
   MaxHp: 100
   CurHp: 100
   moveSpeed: 5
+  walkSpeed: 5
+  runSpeed: 8
   jumpPower: 10
   maxJumpCount: 2
   LifeCount: 3
@@ -268,6 +271,18 @@ MonoBehaviour:
   m_SynchronizeRotation: 1
   m_SynchronizeScale: 0
   m_UseLocal: 1
+--- !u!114 &2886514117448565804
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 611092333110001771}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0657d022ab907b42ad78e3a2a7e1be0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &4212806178424299200
 GameObject:
   m_ObjectHideFlags: 0

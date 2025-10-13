@@ -1,7 +1,8 @@
-using System.Collections.Generic;
-using System.Linq;
 using Photon.Pun;
 using Photon.Realtime;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using PhotonHashtable = ExitGames.Client.Photon.Hashtable;
 
@@ -23,8 +24,25 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
     private readonly int[] rankPoints = { 50, 40, 30, 20 };
     private readonly int killPoint = 5;
 
-    [Header("Modes")]
-    public List<string> allGameModes = new() { "Showdown", "King of the Hill", "TagHunt", "ItemRush", "DodgeRain" };
+    [Header("Modes/Events")]
+    public List<string> allGameModes = new() { "Showdown", "King of the Hill", "FateRoullet", "ItemRush", "DodgeRain" };
+    public List<string> allRoundEvents = new() { "Spotlight", "GoldenAward", "HotOnion", "Paparazzi", "StageMalfunction" };
+
+    // Room Prop Keys (Persistent)
+    private const string PROP_TOTAL_POINTS = "TotalPointsCsv";
+    private const string PROP_CURRENT_ROUND = "CurrentRoundIndex";
+    private const string PROP_STACKED_EVENTS = "StackedRoundEventsCsv";
+
+    // 룸 프로퍼티 키(투표)
+    private const string PROP_VOTE_ACTIVE = "VoteActive";
+    private const string PROP_VOTE_OPTIONS = "VoteOptions";
+    private const string PROP_VOTE_START_TS = "VoteStartTS";
+    private const string PROP_VOTE_LAST = "VoteLastActor";
+    private const string PROP_VOTE_DONE = "VoteDone";
+    private const string PROP_VOTE_WIN_MODE = "VoteWinnerMode";
+    private const string PROP_VOTE_WIN_ACT = "VoteWinnerActor";
+    private const string PROP_LOT_DONE = "LotteryDone";
+
 
     private void Awake()
     {
@@ -85,7 +103,7 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
 
         // 2) 라운드 결과 UI
         GameManager.Instance?.uiManager?.ShowRoundResultUI(ranking, roundPoints);
-
+        SavePersistentStateToRoom();
         // 3) 라운드 카운트 증가
         currentRoundIndex++;
 
@@ -118,14 +136,15 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
                 }
 
                 // 투표 관련 플래그 초기화
-                SetRoomProp("VoteActive", false);
-                SetRoomProp("VoteDone", false);
+                SetRoomProp(PROP_VOTE_ACTIVE, false);
+                SetRoomProp(PROP_VOTE_DONE, false);
+                SetRoomProp(PROP_LOT_DONE, false);
             }
         }
     }
 
     // ===== 투표 시작(마스터 버튼에서 호출) =====
-    public void BeginGameModeVote(int optionCount = 3, int durationSec = 30)
+    public void BeginGameModeVote(int optionCount = 3, int durationSec = 20)
     {
         if (!PhotonNetwork.IsMasterClient) return;
 
@@ -147,13 +166,13 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
         // 투표 속성 설정
         var p2 = new PhotonHashtable
         {
-            { "VoteActive", true },
-            { "VoteOptions", string.Join(",", options) },
-            { "VoteStartTS", PhotonNetwork.Time },
-            { "VoteLastActor", lastActor },
-            { "VoteDone", false },
-            { "VoteWinnerActor", -1 },
-            { "VoteWinnerMode", "" }
+            { PROP_VOTE_ACTIVE, true },
+            { PROP_VOTE_OPTIONS, string.Join(",", options) },
+            { PROP_VOTE_START_TS, PhotonNetwork.Time },
+            { PROP_VOTE_LAST, lastActor },
+            { PROP_VOTE_DONE, false },
+            { PROP_VOTE_WIN_MODE, "" },
+            { PROP_VOTE_WIN_ACT, -1 }
         };
         room.SetCustomProperties(p2);
     }
@@ -170,9 +189,111 @@ public class RoundFlowManager : MonoBehaviourPunCallbacks
             SetRoomProp("NextGameMode", "");
         }
 
-        GameManager.Instance?.BeginNextRoundAfterVote();
+        BeginEventLottery(allRoundEvents);
     }
 
+    // =========================
+    //  이벤트 뽑기 시작(전 플레이어 패널 오픈)
+    // =========================
+    public void BeginEventLottery(List<string> candidateIds)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (candidateIds == null || candidateIds.Count == 0) return;
+
+        // 1) 옵션과 승자를 먼저 RoomProps에 기록
+        var optionsCsv = string.Join(",", candidateIds);
+        var winnerId = candidateIds[UnityEngine.Random.Range(0, candidateIds.Count)];
+
+        var ht = new PhotonHashtable
+    {
+        { "LotteryOptions", optionsCsv },
+        { "LotteryWinner",  winnerId },
+        { "LotteryDone",    false }
+    };
+        PhotonNetwork.CurrentRoom.SetCustomProperties(ht);
+
+        // 2) 아주 짧은 한 프레임 뒤에 모두에게 “이제 열어” 신호
+        StartCoroutine(Co_OpenLotteryPanelForAll());
+    }
+
+    private IEnumerator Co_OpenLotteryPanelForAll()
+    {
+        yield return null; // 한 프레임 대기(Props 전파 보장)
+        photonView.RPC(nameof(RPC_OpenEventLotteryAll), RpcTarget.All);
+    }
+
+    [PunRPC]
+    private void RPC_OpenEventLotteryAll()
+    {
+        GameManager.Instance?.uiManager?.OpenEventLotteryPanel();
+    }
+
+    /// <summary>
+    /// EventLotteryPanel 연출이 끝났을 때(마스터에서) 호출.
+    /// </summary>
+    public void OnEventLotteryFinished(string selectedEventId)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        // 스택에 반영
+        if (!string.IsNullOrEmpty(selectedEventId))
+        {
+            stackedRoundEventIds.Add(selectedEventId);
+            SetRoomProp("StackedRoundEventsCsv", string.Join(",", stackedRoundEventIds));
+        }
+
+        // 상태 저장
+        SavePersistentStateToRoom();
+
+        // 다음 라운드 시작(씬 재로딩 또는 재활용은 GameManager에 위임)
+        GameManager.Instance?.BeginNextRoundAfterVote();
+    }
+    public void SavePersistentStateToRoom()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+
+        string pointsCsv = string.Join(";", playerPoints.Select(kv => $"{kv.Key}:{kv.Value}"));
+        string eventsCsv = (stackedRoundEventIds == null || stackedRoundEventIds.Count == 0)
+            ? "" : string.Join(",", stackedRoundEventIds);
+
+        var ht = new PhotonHashtable
+        {
+            { PROP_TOTAL_POINTS, pointsCsv },
+            { PROP_CURRENT_ROUND, currentRoundIndex },
+            { PROP_STACKED_EVENTS, eventsCsv }
+        };
+        PhotonNetwork.CurrentRoom.SetCustomProperties(ht);
+    }
+    public void RestorePersistentStateFromRoom()
+    {
+        var room = PhotonNetwork.CurrentRoom;
+        if (room == null) return;
+
+        // 점수
+        playerPoints.Clear();
+        if (room.CustomProperties.TryGetValue(PROP_TOTAL_POINTS, out var p) && p is string pointsCsv && !string.IsNullOrEmpty(pointsCsv))
+        {
+            foreach (var token in pointsCsv.Split(';'))
+            {
+                var t = token.Split(':');
+                if (t.Length == 2 && int.TryParse(t[0], out int actor) && int.TryParse(t[1], out int val))
+                    playerPoints[actor] = val;
+            }
+        }
+        else
+        {
+            foreach (var pl in PhotonNetwork.PlayerList) playerPoints[pl.ActorNumber] = 0;
+        }
+
+        // 라운드 인덱스
+        if (room.CustomProperties.TryGetValue(PROP_CURRENT_ROUND, out var r) && r is int cr)
+            currentRoundIndex = cr;
+
+        // 누적 이벤트
+        stackedRoundEventIds.Clear();
+        if (room.CustomProperties.TryGetValue(PROP_STACKED_EVENTS, out var s) && s is string eventsCsv && !string.IsNullOrEmpty(eventsCsv))
+            stackedRoundEventIds.AddRange(eventsCsv.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrEmpty(x)));
+    }
     // ===== 유틸 =====
     public Dictionary<int, int> GetTotalPoints() => new Dictionary<int, int>(playerPoints);
 

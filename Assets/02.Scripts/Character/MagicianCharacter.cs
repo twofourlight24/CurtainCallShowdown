@@ -135,19 +135,70 @@ public class MagicianCharacter : CharacterBase
         }
     }
 
-    /// <summary>
-    /// 가드 행동을 재정의합니다.
-    /// 이 함수는 PlayerInput에서 K 키를 누를 때마다 호출되므로,
-    /// 실제 로직은 Update()에서 관리합니다.
-    /// </summary>
+
     public override void Guard()
     {
         // Update()에서 가드 로직을 처리하므로 이 함수는 비워둡니다.
     }
 
-    /// <summary>
-    /// 스킬 행동을 재정의합니다.
-    /// </summary>
+    public void HoldAttack()
+    {
+        Debug.Log("[Magician] HoldAttack 발동!");
+        StartCoroutine(HoldAttackRoutine());
+    }
+
+    private IEnumerator HoldAttackRoutine()
+    {
+        yield return new WaitForSeconds(0.1f);
+        float direction = isFacingRight ? 1f : -1f;
+
+        for (int i = 0; i < 4; i++)
+        {
+            GameObject card = PhotonNetwork.Instantiate(cardPrefab.name, ShootPos.position, Quaternion.identity);
+            Projectile proj = card.GetComponent<Projectile>();
+            proj.Initialize(transform.position, new Vector2(direction, 0f), cardSpeed, attackRange);
+            yield return new WaitForSeconds(0.1f); // 타다닥
+        }
+    }
+
+    public void DashAttack()
+    {
+        if (!photonView.IsMine) return;
+        Debug.Log("[Magician] DashAttack 돌진 시작!");
+        StartCoroutine(DashAttackRoutine());
+    }
+
+    private IEnumerator DashAttackRoutine()
+    {
+        float dashDistance = 3f;
+        float dashTime = 0.2f;
+        float elapsed = 0f;
+
+        Vector2 start = transform.position;
+        Vector2 target = start + new Vector2(isFacingRight ? dashDistance : -dashDistance, 0);
+
+        while (elapsed < dashTime)
+        {
+            transform.position = Vector2.Lerp(start, target, elapsed / dashTime);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        transform.position = target;
+        // 관통 데미지 판정
+        RaycastHit2D[] hits = Physics2D.RaycastAll(transform.position, isFacingRight ? Vector2.right : Vector2.left, dashDistance);
+        foreach (var hit in hits)
+        {
+            if (hit.collider != null && hit.collider.CompareTag("Player"))
+            {
+                var enemytarget = hit.collider.GetComponent<CharacterBase>();
+                if (enemytarget != null)
+                {
+                    enemytarget.photonView.RPC("RPC_TakeDamage", RpcTarget.All, 20f);
+                }
+            }
+        }
+    }
     public override void UseSkill()
     {
         Debug.Log("마술사 캐릭터의 스킬 사용!");

@@ -22,7 +22,7 @@ public class GamemodeVotePanel : MonoBehaviourPunCallbacks
     private readonly List<ModeButtonView> buttons = new();
     private bool voteActive = false;
     private double voteStartTime;
-    private int voteDuration = 30;
+    public  int voteDuration = 15;
     private bool resultShown = false;
     private int lastPlaceActorNumber = -1;
     private string localSelectedMode = "";
@@ -107,7 +107,7 @@ public class GamemodeVotePanel : MonoBehaviourPunCallbacks
             }
         }
 
-        voteDuration = 30;
+        voteDuration = 5;
         resultShown = false;
         voteActive = true;
 

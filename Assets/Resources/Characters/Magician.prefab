@@ -49,6 +49,7 @@ GameObject:
   - component: {fileID: 4169061886837633221}
   - component: {fileID: 1329297475688073415}
   - component: {fileID: -8376067725607909444}
+  - component: {fileID: 3863974977825407773}
   m_Layer: 6
   m_Name: Magician
   m_TagString: Player
@@ -281,9 +282,12 @@ MonoBehaviour:
   MaxHp: 100
   CurHp: 100
   moveSpeed: 5
+  walkSpeed: 5
+  runSpeed: 8
   jumpPower: 10
   maxJumpCount: 2
   LifeCount: 3
+  commandSet: {fileID: 11400000, guid: ae24ac3f1671d8b4ea52cae27cda3edd, type: 2}
   ShieldObject: {fileID: 3767556995211023607}
   immobilizedTime: 1
   gm: {fileID: 0}
@@ -326,6 +330,18 @@ MonoBehaviour:
   m_SynchronizeAngularVelocity: 0
   m_TeleportEnabled: 0
   m_TeleportIfDistanceGreaterThan: 3
+--- !u!114 &3863974977825407773
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3109745866346550414}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0657d022ab907b42ad78e3a2a7e1be0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &3767556995211023607
 GameObject:
   m_ObjectHideFlags: 0

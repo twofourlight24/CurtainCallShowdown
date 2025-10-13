@@ -19,6 +19,8 @@ public class KingOfTheHillMode : MonoBehaviourPunCallbacks, IGameMode
     private Vector3 hillCenter = Vector3.zero;
     private float hillRadius = 5f;
 
+    public string GetBriefDescription() => "특정 구역에 머물러 점수를 획득하세요! ";
+
     public void Initialize(GameManager gm)
     {
         this.gm = gm;

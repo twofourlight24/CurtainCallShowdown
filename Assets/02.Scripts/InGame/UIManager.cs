@@ -23,10 +23,11 @@ public class UIManager : MonoBehaviourPunCallbacks
     public TMP_Text respawnCountdownText;   // 남은 시간 표시
 
     [Header("UI - Result Panels")]
+    public StartGamePanel startGamePanel;
     public RoundResultPanel roundResultPanel;
     public TotalScorePanel totalScorePanel;
     public GamemodeVotePanel votePanel;
-
+    public EventLotteryPanel eventLotteryPanel;
 
 
     private int GetPlayerIndex(Player target)
@@ -121,6 +122,17 @@ public class UIManager : MonoBehaviourPunCallbacks
         for (int j = 0; j < childCount; j++)
             parent.transform.GetChild(j).gameObject.SetActive(j < currentLives);
     }
+    public void OpenStartGamePanel(string modeName, string brief)
+    {
+        if (startGamePanel == null)
+        {
+            Debug.LogError("[UIManager] StartGamePanel ref missing!");
+            return;
+        }
+        // 내부에서 활성화 후 코루틴 실행 → 비활성 상태 코루틴 미실행 문제 해결
+        startGamePanel.ShowAndRun(modeName, brief);
+    }
+
     // 라운드 결과 보여주기
     public void ShowRoundResultUI(List<Player> ranking, Dictionary<int, int> roundPoints)
     {
@@ -202,6 +214,34 @@ public class UIManager : MonoBehaviourPunCallbacks
             if (votePanel) votePanel.gameObject.SetActive(false);   // GamemodeVotePanel 참조 필드
         }
         catch { }
+    }
+    public void OpenEventLotteryPanel()
+    {
+        if (eventLotteryPanel != null && !eventLotteryPanel.gameObject.activeSelf)
+            eventLotteryPanel.gameObject.SetActive(true);
+
+        StopCoroutine(nameof(Co_OpenLotteryWhenReady));
+        StartCoroutine(Co_OpenLotteryWhenReady());
+    }
+
+    private IEnumerator Co_OpenLotteryWhenReady()
+    {
+        // RoomProps에 두 키가 생길 때까지 기다림 (+ Done=false)
+        while (true)
+        {
+            var room = PhotonNetwork.CurrentRoom;
+            if (room != null && room.CustomProperties != null)
+            {
+                bool hasOpt = room.CustomProperties.TryGetValue("LotteryOptions", out var o) && o is string so && !string.IsNullOrEmpty(so);
+                bool hasWin = room.CustomProperties.TryGetValue("LotteryWinner", out var w) && w is string sw && !string.IsNullOrEmpty(sw);
+                bool notDone = !(room.CustomProperties.TryGetValue("LotteryDone", out var d) && d is bool b && b);
+
+                if (hasOpt && hasWin && notDone) break;
+            }
+            yield return null; // 다음 프레임
+        }
+
+        eventLotteryPanel?.OpenFromRoomProps();
     }
 
     public void HideRespawnOverlay()

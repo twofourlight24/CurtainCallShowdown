@@ -141,6 +141,7 @@ GameObject:
   - component: {fileID: 3244420558033720251}
   - component: {fileID: -4778855701064402600}
   - component: {fileID: 1063993134800447602}
+  - component: {fileID: 4484507092797876824}
   m_Layer: 0
   m_Name: breaker
   m_TagString: Player
@@ -325,9 +326,12 @@ MonoBehaviour:
   MaxHp: 100
   CurHp: 100
   moveSpeed: 5
+  walkSpeed: 5
+  runSpeed: 8
   jumpPower: 10
   maxJumpCount: 2
   LifeCount: 3
+  commandSet: {fileID: 0}
   ShieldObject: {fileID: 1861333862489302294}
   immobilizedTime: 1
   gm: {fileID: 0}
@@ -392,3 +396,15 @@ MonoBehaviour:
   m_SynchronizeAngularVelocity: 0
   m_TeleportEnabled: 0
   m_TeleportIfDistanceGreaterThan: 3
+--- !u!114 &4484507092797876824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5881681416687039972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0657d022ab907b42ad78e3a2a7e1be0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

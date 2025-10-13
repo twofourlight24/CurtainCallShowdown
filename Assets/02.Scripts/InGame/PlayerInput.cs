@@ -1,78 +1,240 @@
+using Photon.Pun;
+using System.Collections.Generic;
 using UnityEngine;
-using Photon.Pun; // Photon.Pun ³×ÀÓ½ºÆäÀÌ½º Ãß°¡
-
+using UnityEngine.TextCore.Text;
 
 [DisallowMultipleComponent]
-public class PlayerInput : MonoBehaviourPun
+public class PlayerInput : MonoBehaviourPun, IPunObservable
 {
-    // ÀÔ·Â¿¡ µû¶ó È£ÃâÇÒ µ¨¸®°ÔÀÌÆ® (ÀÌº¥Æ®)
-    public delegate void OnMove(Vector2 direction);
-    public event OnMove onMove;
-
-    public delegate void OnAction();
-    public event OnAction onAttack;
-    public event OnAction onGuard;
-    public event OnAction onSkill;
-
     public CharacterBase controlledCharacter;
+    public CharacterBase Character { get; private set; }
+    private PhotonView pv;
+
+    [Header("Network Sync")]
+    private Vector3 networkPosition;
+    private Vector3 networkVelocity;
+    private float lastReceivedTime;
+    private float lerpSpeed = 10f;
+
+    [Header("Run Detection")]
+    public float doubleTapTime = 0.5f; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    private float lastATapTime = -1f;
+    private float lastDTapTime = -1f;
+    private bool isRunning = false;
+
+    [Header("Attack Detection")]
+    private Dictionary<KeyCode, float> lastPressTime = new();
+    private Dictionary<KeyCode, float> holdStartTime = new();
+    private Dictionary<string, float> skillCooldowns = new(); // ìŠ¤í‚¬ë³„ ì¿¨íƒ€ì„ ê´€ë¦¬
+
+    private Rigidbody2D rb;
+    public void SetCharacter(CharacterBase cb)
+    {
+        Character = cb;
+        controlledCharacter = cb;
+    }
+    void Awake()
+    {
+        rb = GetComponent<Rigidbody2D>();
+        networkPosition = transform.position;
+        pv = GetComponent<PhotonView>();
+
+        // ì•ˆì „ë§: ì£¼ì…ì´ ì•„ì§ ì—†ìœ¼ë©´ ìŠ¤ìŠ¤ë¡œ ì°¾ì•„ì„œ ë°”ì¸ë”©
+        if (Character == null)
+            Character = GetComponent<CharacterBase>();
+        if (controlledCharacter == null)
+            controlledCharacter = Character;
+    }
+    void OnEnable()
+    {
+        // í˜¹ì‹œ ì”¬ ë¦¬ë¡œë“œ/ë¦¬ìŠ¤í° ë“±ìœ¼ë¡œ ì°¸ì¡°ê°€ ëŠê²¼ì„ ë•Œ ì¬ë°”ì¸ë”©
+        if (Character == null)
+            Character = GetComponent<CharacterBase>();
+        if (controlledCharacter == null)
+            controlledCharacter = Character;
+    }
 
     void Update()
     {
+        if (pv == null && !pv.IsMine) return;
+        if (controlledCharacter == null) return;
+
         if (photonView.IsMine)
         {
-            float h = Input.GetAxis("Horizontal");
-            float v = Input.GetAxis("Vertical");
-            Vector3 moveDirection = new Vector3(h, v, 0f).normalized;
-
-            if (controlledCharacter != null)
-            {
-                controlledCharacter.SetMoveDirection(moveDirection);
-            }
-
-            // °ø°İ (J Å°)
-            if (Input.GetKeyDown(KeyCode.J))
-            {
-                if (controlledCharacter != null)
-                {
-                    controlledCharacter.Attack();
-                }
-            }
-
-            // °¡µå (K Å°)
-            if (Input.GetKeyDown(KeyCode.K))
-            {
-                if (controlledCharacter != null)
-                {
-                    controlledCharacter.Guard();
-                }
-            }
-
-            // ½ºÅ³ (L Å°)
-            if (Input.GetKeyDown(KeyCode.L))
-            {
-                if (controlledCharacter != null)
-                {
-                    controlledCharacter.UseSkill();
-                }
-            }
-
-            // Á¡ÇÁ (½ºÆäÀÌ½º¹Ù)
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                if (controlledCharacter != null)
-                {
-                    controlledCharacter.Jump();
-                }
-            }
-
-            // ¾Æ·¡ ¹æÇâÅ°·Î ¹ßÆÇ Åë°ú
-            if (Input.GetKeyDown(KeyCode.DownArrow)||Input.GetKeyDown(KeyCode.S))
-            {
-                if (controlledCharacter != null)
-                {
-                    controlledCharacter.DropThroughPlatform();
-                }
-            }
+            HandleInput();
+            HandleCommandInput(KeyCode.J);
+        }
+        else
+        {
+            HandleNetworkInterpolation();
         }
     }
+
+    #region --- Input Handling ---
+    private void HandleInput()
+    {
+        Vector3 moveDir = Vector3.zero;
+
+        bool aPressed = Input.GetKey(KeyCode.A);
+        bool dPressed = Input.GetKey(KeyCode.D);
+
+        // --- ï¿½Ìµï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ---
+        if (aPressed) moveDir = Vector3.left;
+        else if (dPressed) moveDir = Vector3.right;
+
+        // --- ï¿½Ş¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ---
+        if (Input.GetKeyDown(KeyCode.A))
+        {
+            if (Time.time - lastATapTime <= doubleTapTime)
+                isRunning = true;
+            lastATapTime = Time.time;
+        }
+        if (Input.GetKeyDown(KeyCode.D))
+        {
+            if (Time.time - lastDTapTime <= doubleTapTime)
+                isRunning = true;
+            lastDTapTime = Time.time;
+        }
+
+        // --- Å° ï¿½ï¿½ï¿½ï¿½ ï¿½Ş¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ---
+        if (Input.GetKeyUp(KeyCode.A) || Input.GetKeyUp(KeyCode.D))
+            isRunning = false;
+
+        // --- ï¿½ï¿½ï¿½ï¿½ Ä³ï¿½ï¿½ï¿½ï¿½ ï¿½Ìµï¿½ ï¿½ï¿½ï¿½ï¿½ ---
+        if (controlledCharacter != null)
+        {
+            controlledCharacter.SetMoveDirection(moveDir);
+            controlledCharacter.SetRunState(isRunning);
+        }
+
+        if (Input.GetKeyDown(KeyCode.K))
+            controlledCharacter?.Guard();
+
+        if (Input.GetKeyDown(KeyCode.L))
+            controlledCharacter?.UseSkill();
+
+        // --- ï¿½ï¿½ï¿½ï¿½ ---
+        if (Input.GetKeyDown(KeyCode.Space))
+            controlledCharacter?.Jump();
+
+        // --- ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½: S + Space ï¿½ï¿½ï¿½Ã¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ---
+        if (Input.GetKey(KeyCode.S) && Input.GetKey(KeyCode.Space))
+            controlledCharacter?.DropThroughPlatform();
+    }
+    private void HandleCommandInput(KeyCode key)
+    {
+        // ëª¨ë“  ì»¤ë§¨ë“œ ì¤‘ keyê°€ Jì¸ ê²ƒë§Œ í•„í„°ë§
+        var cmds = controlledCharacter.commandSet?.commands;
+        if (cmds == null) return;
+
+        bool anyExecuted = false;
+
+        foreach (var cmd in cmds)
+        {
+            if (cmd.key != key) continue;
+            if (IsOnCooldown(cmd)) continue; // ì¿¨íƒ€ì„ ì¤‘ì´ë©´ ë¬´ì‹œ
+
+            switch (cmd.type)
+            {
+                case CharacterCommandSet.CommandType.SinglePress:
+                    if (Input.GetKeyDown(key))
+                    {
+                        ExecuteCommand(cmd);
+                        anyExecuted = true;
+                    }
+                    break;
+
+                case CharacterCommandSet.CommandType.DoublePress:
+                    if (Input.GetKeyDown(key))
+                    {
+                        if (Time.time - lastPressTime.GetValueOrDefault(key) <= cmd.timeWindow)
+                        {
+                            ExecuteCommand(cmd);
+                            anyExecuted = true;
+                        }
+                        lastPressTime[key] = Time.time;
+                    }
+                    break;
+
+                case CharacterCommandSet.CommandType.Hold:
+                    if (Input.GetKeyDown(key))
+                        holdStartTime[key] = Time.time;
+
+                    if (Input.GetKeyUp(key))
+                    {
+                        if (holdStartTime.ContainsKey(key) &&
+                            Time.time - holdStartTime[key] >= cmd.timeWindow)
+                        {
+                            ExecuteCommand(cmd);
+                            anyExecuted = true;
+                        }
+                    }
+                    break;
+
+                case CharacterCommandSet.CommandType.WhileRunning:
+                    if (controlledCharacter.IsRunning && Input.GetKeyDown(key))
+                    {
+                        ExecuteCommand(cmd);
+                        anyExecuted = true;
+                    }
+                    break;
+            }
+        }
+
+        // ì»¤ë§¨ë“œê°€ í•˜ë‚˜ë„ ë°œë™í•˜ì§€ ì•Šì•˜ë‹¤ë©´ â†’ ê¸°ë³¸ ê³µê²© ë°œë™
+        if (!anyExecuted && Input.GetKeyDown(key))
+            controlledCharacter.Attack();
+    }
+
+    private void ExecuteCommand(CharacterCommandSet.Command cmd)
+    {
+        if (IsOnCooldown(cmd)) return;
+
+        var method = controlledCharacter.GetType().GetMethod(cmd.skillMethod,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+
+        if (method != null)
+        {
+            method.Invoke(controlledCharacter, null);
+            skillCooldowns[cmd.commandName] = Time.time + cmd.cooldown;
+        }
+        else
+        {
+            Debug.LogWarning($"[Command] '{cmd.skillMethod}' not found on {controlledCharacter.name}");
+        }
+    }
+
+    private bool IsOnCooldown(CharacterCommandSet.Command cmd)
+    {
+        return skillCooldowns.TryGetValue(cmd.commandName, out float endTime) && Time.time < endTime;
+    }
+
+
+    #endregion
+
+    #region --- Network Interpolation ---
+    private void HandleNetworkInterpolation()
+    {
+        float lag = Mathf.Max(0f, (float)(PhotonNetwork.Time - lastReceivedTime));
+        Vector3 targetPos = networkPosition + networkVelocity * lag;
+        transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * lerpSpeed);
+    }
+    #endregion
+
+    #region --- Photon Sync ---
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        if (stream.IsWriting)
+        {
+            stream.SendNext(transform.position);
+            stream.SendNext(rb != null ? rb.linearVelocity : Vector3.zero);
+        }
+        else
+        {
+            networkPosition = (Vector3)stream.ReceiveNext();
+            networkVelocity = (Vector3)stream.ReceiveNext();
+            lastReceivedTime = (float)PhotonNetwork.Time;
+        }
+    }
+    #endregion
 }

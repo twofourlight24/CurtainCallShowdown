@@ -52,6 +52,13 @@ MonoBehaviour:
   - RPC_OpenTotalScoreForAllClients
   - RPC_OpenGameModeVotePanelForAll
   - RPC_ActivateGoldenAward
+  - RPC_OpenEventLotteryAll
+  - RPC_OpenTotalScoreAll
+  - RPC_ShowRoundResultsAll
+  - RPC_OpenStartGamePanel
+  - RPC_ActionStart
+  - RPC_ShowStartPanel
+  - RPC_CloseAllGamePanels
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

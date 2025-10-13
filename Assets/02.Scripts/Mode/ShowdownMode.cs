@@ -21,7 +21,7 @@ public class ShowdownMode : MonoBehaviourPunCallbacks, IGameMode
     public int startingLives = 1;
     public float respawnDelay = 5f;
     public float invincibleTime = 2f;
-
+    public string GetBriefDescription() => "모든 플레이어를 처치하세요!";
     public void Initialize(GameManager gm)
     {
         this.gm = gm;

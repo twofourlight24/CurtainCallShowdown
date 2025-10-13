@@ -10,13 +10,18 @@ using System.Collections;
 /// </summary>
 public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCallback, IPunObservable
 {
+    public bool IsRunning { get; private set; }
+
     // 캐릭터의 공통적인 속성
     public float MaxHp = 100f;
     public float CurHp = 100f;
-    public float moveSpeed = 5f;
+    public float moveSpeed = 0f;
+    public float walkSpeed = 5f;
+    public float runSpeed = 8f; // 달리기 속도 추가
     public float jumpPower = 10f; // 점프 힘 추가
     public int maxJumpCount = 2; // 최대 점프 횟수 추가
     public int LifeCount = 3;
+    public CharacterCommandSet commandSet;
 
     [Header("Character Properties")]
     public GameObject ShieldObject; // 가드 기능을 위한 쉴드 오브젝트 추가
@@ -43,16 +48,21 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
 
     public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
-        var owner = photonView.Owner;
-        if (owner != null && GameManager.Instance != null)
-            GameManager.Instance.RegisterCharacter(owner, this.gameObject);
+        StartCoroutine(Co_RegisterAfterManagerReady());
+    }
 
-        if (photonView.IsMine)
+    private IEnumerator Co_RegisterAfterManagerReady()
+    {
+        // GameManager.Instance가 null일 수 있음 → 준비될 때까지 잠깐 대기
+        float t = 0f;
+        while (GameManager.Instance == null && t < 2f)
         {
-            if (!TryGetComponent<PlayerInput>(out var input))
-                input = gameObject.AddComponent<PlayerInput>();
-            input.controlledCharacter = this;
+            t += Time.deltaTime;
+            yield return null;
         }
+        var owner = photonView.Owner;
+        if (GameManager.Instance != null && owner != null)
+            GameManager.Instance.RegisterCharacter(owner, this.gameObject);
     }
 
     protected void Start()
@@ -64,6 +74,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         }
         gm = GameManager.Instance;
 
+        if (CurHp <= 0f) CurHp = MaxHp;
         jumpCount = maxJumpCount;
 
         // 동기화 변수 초기화
@@ -123,6 +134,11 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     public void SetMoveDirection(Vector3 direction)
     {
         moveDirection = direction;
+    }
+    public void SetRunState(bool running)
+    {
+        IsRunning = running;    
+        moveSpeed = running ? runSpeed : walkSpeed;
     }
 
     /// <summary>

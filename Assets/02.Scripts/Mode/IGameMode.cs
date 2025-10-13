@@ -3,7 +3,7 @@ using System.Collections.Generic;
 public interface IGameMode
 {
     string ModeName { get; }
-
+    string GetBriefDescription();
     void Initialize(GameManager gm);
     void StartRound();
     void EndRound();

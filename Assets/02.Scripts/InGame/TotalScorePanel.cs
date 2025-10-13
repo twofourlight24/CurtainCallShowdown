@@ -65,7 +65,7 @@ public class TotalScorePanel : MonoBehaviour
         startVoteButtonForMaster.interactable = false;
 
         // 1) 투표 세션 생성 (RoomProps 세팅)
-        RoundFlowManager.Instance?.BeginGameModeVote(3, 30);
+        RoundFlowManager.Instance?.BeginGameModeVote(3, 10);
 
         // 2) 방장 로컬 즉시 열기 (레이스 방지)
         GameManager.Instance?.uiManager?.OpenGameModeVotePanel();
