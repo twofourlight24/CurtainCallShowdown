@@ -1,127 +1,208 @@
-using UnityEngine;
-using Photon.Pun;
 using System.Collections;
+using Photon.Pun;
+using UnityEngine;
+
 public class DancerCharacter : CharacterBase
 {
-    [Header("Character Properties")]
-    public float AttackDamage = 15f;
+    [Header("Attack - Common")]
+    public Collider2D attackCollider;       // 공격 판정용(Trigger)
+    public float rehitCooldown = 0.15f;     // 같은 대상 재히트 최소 간격
 
-    [Header("Dancer Guard Properties")]
-    public float shieldScaleDecrease = 0.3f; // 가드 시 쉴드 크기 감소량
-    public float minShieldScale = 0.1f; // 쉴드가 파괴되는 최소 크기
-    public float shieldRegenTime = 2.0f; // 쉴드 재생성 시간
+    [Header("Attack - Basic")]
+    public float basicStiffTime = 0.2f;     // 기본공격 경직(이동 불가)
+    public float basicAttackTime = 0.18f;   // 콜라이더 on 유지시간
+    public float basicDamage = 15f;         // 기본공격 피해
+
+    [Header("Run-Hold (While Running + Hold J)")]
+    public float runHoldTickDamage = 12f;   // 홀드 유지 중 접촉 피해
+    public float runHoldHitInterval = 0.15f;// 접촉 피해 간격
+    public float runHoldMaxDuration = 6f;   // 안전 차단(과도한 유지 방지, 선택)
+
+    [Header("Guard (Magician-like)")]
+    public float shieldScaleDecrease = 0.3f;
+    public float minShieldScale = 0.1f;
+    public float shieldRegenTime = 2.0f;
+
+    // 내부 상태
+    private bool isGuarding;
+    private bool isAttacking;        // 기본공격 시전 중
+    private bool isRunHolding;       // 달리기+J 홀드 활성
+    private float currentDamage;     // 공격 콜라이더가 줄 피해
+    private float lastTickTime;      // Run-Hold 틱 쿨다운
+    private Rigidbody2D _rb;
     private Vector3 initialShieldScale;
-
-    private bool isGuarding = false;
+    private readonly System.Collections.Generic.Dictionary<int, float> _lastHitAt = new();
 
     new void Start()
     {
-        // CharacterBase의 Start() 함수를 먼저 호출
         base.Start();
-
-        // 쉴드 오브젝트의 초기 크기 저장
-        if (ShieldObject != null)
-        {
-            initialShieldScale = ShieldObject.transform.localScale;
-        }
+        _rb = GetComponent<Rigidbody2D>();
+        if (ShieldObject) initialShieldScale = ShieldObject.transform.localScale;
+        if (attackCollider) attackCollider.enabled = false;
     }
 
     void Update()
     {
-        // 로컬 플레이어만 입력을 받습니다.
-        if (photonView.IsMine)
+        if (!photonView.IsMine) return;
+
+        // --- Guard (K) : 마술사 방식 동일 ---
+        if (Input.GetKey(KeyCode.K))
         {
-            // 가드 (K 키) - 키를 누르는 동안만 작동
-            if (Input.GetKey(KeyCode.K))
+            if (!isGuarding)
             {
-                if (!isGuarding)
-                {
-                    isGuarding = true;
-                    // 가드 시작 로직
-                    StartGuard();
-                }
-                UpdateGuard();
+                isGuarding = true;
+                if (ShieldObject) ShieldObject.SetActive(true);
             }
-            else if (isGuarding)
-            {
-                // 가드 종료 로직
-                isGuarding = false;
-                EndGuard();
-            }
+            GuardTick();
         }
-    }
-
-    private void StartGuard()
-    {
-        Debug.Log("마술사 캐릭터의 가드 시작!");
-        if (ShieldObject != null)
+        else if (isGuarding)
         {
-            // 가드 시작 시 쉴드 활성화
-            ShieldObject.SetActive(true);
+            isGuarding = false;
+            if (ShieldObject) ShieldObject.SetActive(false);
         }
+
+        // Run-Hold 유지 틱: 이동은 '달리기 상태' 그대로 허용(조련사와 다르게 이동을 막지 않음)
+        if (isRunHolding)
+            RunHoldTick();
     }
 
-    private void UpdateGuard()
-    {
-        if (ShieldObject != null)
-        {
-            // 쉴드 크기 감소
-            Vector3 newScale = ShieldObject.transform.localScale - new Vector3(shieldScaleDecrease, shieldScaleDecrease, 0) * Time.deltaTime;
-            ShieldObject.transform.localScale = newScale;
-
-            // 쉴드 파괴 조건
-            if (newScale.x <= minShieldScale)
-            {
-                BreakShield();
-            }
-        }
-    }
-
-    private void EndGuard()
-    {
-        Debug.Log("마술사 캐릭터의 가드 종료!");
-        if (ShieldObject != null)
-        {
-            ShieldObject.SetActive(false);
-        }
-    }
-
-    private void BreakShield()
-    {
-        Debug.Log("쉴드 파괴! 2초간 이동 불가!");
-        // 쉴드 파괴 시 비활성화 및 이동 불가 상태로 전환
-        ShieldObject.SetActive(false);
-        isGuarding = false; // 가드 상태를 즉시 종료
-        StartCoroutine(ImmobilizeCharacter());
-
-        // 2초 뒤 쉴드 재생성 코루틴 시작
-        StartCoroutine(RegenerateShield());
-    }
-
-    private IEnumerator RegenerateShield()
-    {
-        yield return new WaitForSeconds(shieldRegenTime);
-        Debug.Log("쉴드 재생성!");
-        if (ShieldObject != null)
-        {
-            ShieldObject.transform.localScale = initialShieldScale;
-        }
-    }
-
+    // ===== PlayerInput이 직접 호출할 공개 API =====
     public override void Attack()
     {
-        Debug.Log("댄서 캐릭터의 강한 공격!");
-        // 공격 로직 (예: 데미지 처리) 추가
+        if (!isAttacking && !isRunHolding)
+            StartCoroutine(BasicAttack());
+        Debug.Log("댄서 캐릭터의 기본 공격!");
     }
 
-    // 스킬 행동 재정의 (오버라이드)
-    public override void UseSkill()
+    // WhileRunningHold 시작(키다운 시 PlayerInput이 호출)
+    public void StartDash()
     {
-        Debug.Log("댄서 캐릭터의 스킬 사용!");
+        if (!photonView.IsMine) return;
+        if (isAttacking || isRunHolding) return;
+
+        isRunHolding = true;
+        lastTickTime = -999f;
+        if (attackCollider) attackCollider.enabled = true; // 접촉 판정 on
+        StartCoroutine(RunHoldTimeoutGuard());
+        Debug.Log("댄서 캐릭터의 달리기+홀드 공격 시작!");
     }
 
-    public override void Guard()
+    // WhileRunningHold 종료(키업 시 PlayerInput이 StopDash() 호출)
+    public void StopDash()
     {
-        Debug.Log("댄서 캐릭터의 가드!");
+        isRunHolding = false;
+        if (attackCollider) attackCollider.enabled = false;
+        Debug.Log("댄서 캐릭터의 달리기+홀드 공격 종료!");
+    }
+
+    public override void Guard() { /* 유지 로직은 Update에서 처리 */ }
+
+    // ===== 내부 구현 =====
+    private IEnumerator BasicAttack()
+    {
+        isAttacking = true;
+        // 기본공격 동안 이동 불가(경직)
+        yield return FreezeSeconds(basicStiffTime);
+
+        currentDamage = basicDamage;
+        using (new Scope(this, attackCollider, currentDamage))
+            yield return new WaitForSeconds(basicAttackTime);
+
+        isAttacking = false;
+        Debug.Log("댄서 캐릭터의 기본 공격 종료!");
+    }
+
+    private void RunHoldTick()
+    {
+        // 달리기 입력/속도는 PlayerInput/CharacterBase가 그대로 유지
+        // 접촉 틱 쿨타임만 관리(실제 데미지는 OnTrigger에서 처리)
+        if (Time.time - lastTickTime > runHoldHitInterval)
+            lastTickTime = Time.time;
+    }
+
+    private IEnumerator RunHoldTimeoutGuard()
+    {
+        float t = 0f;
+        while (isRunHolding && t < runHoldMaxDuration)
+        {
+            t += Time.deltaTime;
+            yield return null;
+        }
+        if (isRunHolding) StopDash();
+    }
+
+    private IEnumerator FreezeSeconds(float sec)
+    {
+        float end = Time.time + sec;
+        while (Time.time < end)
+        {
+            // 이동 차단
+            if (_rb) _rb.linearVelocity = new Vector2(0f, _rb.linearVelocity.y);
+            moveSpeed = 0f;
+            yield return null;
+        }
+    }
+
+    private void GuardTick()
+    {
+        if (!ShieldObject) return;
+        var s = ShieldObject.transform.localScale
+              - new Vector3(shieldScaleDecrease, shieldScaleDecrease, 0f) * Time.deltaTime;
+        ShieldObject.transform.localScale = s;
+        if (s.x <= minShieldScale)
+        {
+            ShieldObject.SetActive(false);
+            StartCoroutine(ImmobilizeCharacter());
+            StartCoroutine(RegenShield());
+            isGuarding = false;
+        }
+    }
+
+    private IEnumerator RegenShield()
+    {
+        yield return new WaitForSeconds(shieldRegenTime);
+        if (ShieldObject) ShieldObject.transform.localScale = initialShieldScale;
+    }
+
+    // === 접촉 데미지 ===
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        TryHit(other);
+    }
+    private void OnTriggerStay2D(Collider2D other)
+    {
+        TryHit(other);
+    }
+
+    private void TryHit(Collider2D other)
+    {
+        if (!photonView.IsMine) return;
+        if (attackCollider == null || !attackCollider.enabled) return;
+
+        var target = other.GetComponentInParent<CharacterBase>();
+        var tpv = target.photonView; if (tpv == null || tpv.Owner == photonView.Owner) return;
+
+        // 재히트 쿨타임
+        int aid = tpv.Owner != null ? tpv.Owner.ActorNumber : 0;
+        if (_lastHitAt.TryGetValue(aid, out float last) && Time.time - last < rehitCooldown) return;
+        _lastHitAt[aid] = Time.time;
+
+        float dmg = isRunHolding ? runHoldTickDamage : currentDamage;
+        tpv.RPC("RPC_TakeDamage", RpcTarget.All, dmg);
+    }
+
+    // 공격 콜라이더 on/off 범위 관리
+    private readonly struct Scope : System.IDisposable
+    {
+        private readonly Collider2D col;
+        public Scope(DancerCharacter o, Collider2D c, float dmg)
+        {
+            if (c) { c.enabled = true; }
+            col = c;
+        }
+        public void Dispose()
+        {
+            if (col) col.enabled = false;
+        }
     }
 }

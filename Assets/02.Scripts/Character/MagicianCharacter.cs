@@ -199,11 +199,6 @@ public class MagicianCharacter : CharacterBase
             }
         }
     }
-    public override void UseSkill()
-    {
-        Debug.Log("마술사 캐릭터의 스킬 사용!");
-        // 마술사 고유의 스킬 로직 추가
-    }
 
     /// <summary>
     /// 쉴드 콜라이더에 다른 오브젝트가 닿았을 때 호출됩니다.

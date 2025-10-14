@@ -1,127 +1,276 @@
-using UnityEngine;
-using System.Collections;
+ï»¿using System.Collections;
 using Photon.Pun;
+using UnityEngine;
 
 public class BreakerCharacter : CharacterBase
 {
-    [Header("Breaker Character Properties")]
-    public float AttackDamage = 15f;
+    [Header("Attack - Common")]
+    public Collider2D attackCollider;
+    public float rehitCooldown = 0.15f;
 
-    [Header("Magician Guard Properties")]
-    public float shieldScaleDecrease = 0.3f; // °¡µå ½Ã ½¯µå Å©±â °¨¼Ò·®
-    public float minShieldScale = 0.1f; // ½¯µå°¡ ÆÄ±«µÇ´Â ÃÖ¼Ò Å©±â
-    public float shieldRegenTime = 2.0f; // ½¯µå Àç»ı¼º ½Ã°£
+    [Header("Attack - Basic")]
+    public float basicStiffTime = 0.2f;
+    public float basicAttackTime = 0.18f;
+    public float basicDamage = 15f;
+
+    [Header("Attack - Hold (tiers)")]
+    public float tier1HoldSec = 1.0f, tier2HoldSec = 2.0f, tier3HoldSec = 3.0f;
+    public float tier1Damage = 25f, tier2Damage = 40f, tier3Damage = 65f;
+    public float tier1ActiveTime = 0.25f, tier2ActiveTime = 0.4f, tier3ActiveTime = 0.6f;
+    public Vector2 tier1ColliderOffset = new(0.9f, 0f), tier2ColliderOffset = new(1.3f, 0f), tier3ColliderOffset = new(1.8f, 0f);
+    public Vector2 tier1ColliderScale = new(1f, 1f), tier2ColliderScale = new(1.4f, 1.1f), tier3ColliderScale = new(1.8f, 1.2f);
+
+    [Header("Attack - Dash (While Running + Hold J)")]
+    public float dashSpeedMultiplier = 1.5f;
+    public float dashTickDamage = 18f;
+    public float dashHitInterval = 0.18f;
+    public float dashMaxDuration = 3.5f;
+
+    [Header("Guard (Magician-like)")]
+    public float shieldScaleDecrease = 0.3f;
+    public float minShieldScale = 0.1f;
+    public float shieldRegenTime = 2.0f;
+
+    // ë‚´ë¶€ ìƒíƒœ
+    private bool isGuarding, isAttacking, isCharging, isDashing;
+    private float currentDamage, lastDashHitTime;
+    private Rigidbody2D _rb;
     private Vector3 initialShieldScale;
-
-    private bool isGuarding = false;
+    private readonly System.Collections.Generic.Dictionary<int, float> _lastHitAt = new();
 
     new void Start()
     {
-        // CharacterBaseÀÇ Start() ÇÔ¼ö¸¦ ¸ÕÀú È£Ãâ
-        base.Start();
-
-        // ½¯µå ¿ÀºêÁ§Æ®ÀÇ ÃÊ±â Å©±â ÀúÀå
-        if (ShieldObject != null)
-        {
-            initialShieldScale = ShieldObject.transform.localScale;
-        }
+        base.Start(); // CharacterBase ì´ˆê¸°í™”
+        _rb = GetComponent<Rigidbody2D>();
+        if (ShieldObject) initialShieldScale = ShieldObject.transform.localScale;
+        if (attackCollider) attackCollider.enabled = false;
     }
 
     void Update()
     {
-        // ·ÎÄÃ ÇÃ·¹ÀÌ¾î¸¸ ÀÔ·ÂÀ» ¹Ş½À´Ï´Ù.
-        if (photonView.IsMine)
+        if (!photonView.IsMine) return;
+
+        // --- Guard (K) : ë§ˆìˆ ì‚¬ ë°©ì‹ê³¼ ë™ì¼ ---
+        if (Input.GetKey(KeyCode.K))
         {
-            // °¡µå (K Å°) - Å°¸¦ ´©¸£´Â µ¿¾È¸¸ ÀÛµ¿
-            if (Input.GetKey(KeyCode.K))
+            if (!isGuarding)
             {
-                if (!isGuarding)
-                {
-                    isGuarding = true;
-                    // °¡µå ½ÃÀÛ ·ÎÁ÷
-                    StartGuard();
-                }
-                UpdateGuard();
+                isGuarding = true;
+                if (ShieldObject) ShieldObject.SetActive(true);
             }
-            else if (isGuarding)
-            {
-                // °¡µå Á¾·á ·ÎÁ÷
-                isGuarding = false;
-                EndGuard();
-            }
+            GuardTick();
         }
-    }
-
-    private void StartGuard()
-    {
-        Debug.Log("¸¶¼ú»ç Ä³¸¯ÅÍÀÇ °¡µå ½ÃÀÛ!");
-        if (ShieldObject != null)
+        else if (isGuarding)
         {
-            // °¡µå ½ÃÀÛ ½Ã ½¯µå È°¼ºÈ­
-            ShieldObject.SetActive(true);
+            isGuarding = false;
+            if (ShieldObject) ShieldObject.SetActive(false);
         }
+
+        // ëŒ€ì‰¬ ìœ ì§€(í‚¤í™€ë“œ ì¤‘ ì´ë™/íƒ€ê²©ì€ PlayerInputì—ì„œ ì‹œì‘/ì¢…ë£Œ, ìœ ì§€ í‹±ì€ ì—¬ê¸°ì„œ ì²˜ë¦¬)
+        if (isDashing) DashTick();
+
+        // ê³µê²©/ì°¨ì§€ ì¤‘ì—ëŠ” ì´ë™ ì°¨ë‹¨
+        if (isAttacking || isCharging) FreezeFrame();
     }
 
-    private void UpdateGuard()
-    {
-        if (ShieldObject != null)
-        {
-            // ½¯µå Å©±â °¨¼Ò
-            Vector3 newScale = ShieldObject.transform.localScale - new Vector3(shieldScaleDecrease, shieldScaleDecrease, 0) * Time.deltaTime;
-            ShieldObject.transform.localScale = newScale;
+    // ====== PlayerInputì—ì„œ ì§ì ‘ í˜¸ì¶œí•  ê³µê°œ API ======
 
-            // ½¯µå ÆÄ±« Á¶°Ç
-            if (newScale.x <= minShieldScale)
-            {
-                BreakShield();
-            }
-        }
-    }
-    private void EndGuard()
-    {
-        Debug.Log("Á¶·Ã»ç Ä³¸¯ÅÍÀÇ °¡µå Á¾·á!");
-        if (ShieldObject != null)
-        {
-            ShieldObject.SetActive(false);
-        }
-    }
-
-    private void BreakShield()
-    {
-        Debug.Log("½¯µå ÆÄ±«! 2ÃÊ°£ ÀÌµ¿ ºÒ°¡!");
-        // ½¯µå ÆÄ±« ½Ã ºñÈ°¼ºÈ­ ¹× ÀÌµ¿ ºÒ°¡ »óÅÂ·Î ÀüÈ¯
-        ShieldObject.SetActive(false);
-        isGuarding = false; // °¡µå »óÅÂ¸¦ Áï½Ã Á¾·á
-        StartCoroutine(ImmobilizeCharacter());
-
-        // 2ÃÊ µÚ ½¯µå Àç»ı¼º ÄÚ·çÆ¾ ½ÃÀÛ
-        StartCoroutine(RegenerateShield());
-    }
-
-    private IEnumerator RegenerateShield()
-    {
-        yield return new WaitForSeconds(shieldRegenTime);
-        Debug.Log("½¯µå Àç»ı¼º!");
-        if (ShieldObject != null)
-        {
-            ShieldObject.transform.localScale = initialShieldScale;
-        }
-    }
-
+    /// <summary>ê¸°ë³¸ê³µê²©(íƒ­) â€“ 0.2ì´ˆ ê²½ì§ + ì§§ì€ ì½œë¼ì´ë” on</summary>
     public override void Attack()
     {
-        Debug.Log("Á¶·Ã»ç Ä³¸¯ÅÍÀÇ °ø°İ!");
-        // °ø°İ ·ÎÁ÷ (¿¹: µ¥¹ÌÁö Ã³¸®) Ãß°¡
+        if (!isAttacking && !isCharging && !isDashing)
+            StartCoroutine(BasicAttack());
+    }
+    public void HoldAttackTier1() { HoldAttackTier(1); }
+    public void HoldAttackTier2() { HoldAttackTier(2); }
+    public void HoldAttackTier3() { HoldAttackTier(3); }
+    /// <summary>í™€ë“œ ê³µê²© â€“ í‹°ì–´(1/2/3)ì— ë”°ë¼ ë²”ìœ„/ë°ë¯¸ì§€/ì‹œê°„ ë‹¤ë¦„</summary>
+    public void HoldAttackTier(int tier)
+    {
+        if (!photonView.IsMine) return;
+        if (isAttacking || isDashing) return;
+
+        // PlayerInputì´ KeyUpì—ì„œ í‹°ì–´ë¥¼ íŒì •í•´ í˜¸ì¶œ
+        StartCoroutine(HoldAttackTierRoutine(Mathf.Clamp(tier, 1, 3)));
     }
 
-    // ½ºÅ³ Çàµ¿ ÀçÁ¤ÀÇ (¿À¹ö¶óÀÌµå)
-    public override void UseSkill()
+    /// <summary>ë‹¬ë¦¬ê¸°+í™€ë“œ â€“ ì‹œì‘(í‚¤ë‹¤ìš´)</summary>
+    public void StartDash()
     {
-        Debug.Log("Á¶·Ã»ç Ä³¸¯ÅÍÀÇ ½ºÅ³ »ç¿ë!");
+        if (!photonView.IsMine) return;
+        if (isAttacking || isDashing) return;
+
+        isCharging = false; // ëŒ€ì‹œê°€ ìš°ì„ 
+        isDashing = true;
+        lastDashHitTime = -999f;
+
+        ForceDashMove();
+        if (attackCollider) attackCollider.enabled = true; // ì ‘ì´‰ íŒì • on
+        // (ëŒ€ì‹œ ìµœëŒ€ ì‹œê°„ ì œí•œì„ ë‘ê³  ì‹¶ë‹¤ë©´ ì½”ë£¨í‹´ìœ¼ë¡œ ê°ì‹œ ê°€ëŠ¥)
+        StartCoroutine(DashTimeoutGuard());
     }
 
-    public override void Guard()
+    /// <summary>ë‹¬ë¦¬ê¸°+í™€ë“œ â€“ ì¢…ë£Œ(í‚¤ì—…)</summary>
+    public void StopDash()
     {
-        Debug.Log("Á¶·Ã»ç Ä³¸¯ÅÍÀÇ °¡µå!");
+        isDashing = false;
+        if (_rb) _rb.linearVelocity = new Vector2(0f, _rb.linearVelocity.y);
+        if (attackCollider) attackCollider.enabled = false;
+    }
+
+    public override void Guard() { /* ìœ ì§€ ë¡œì§ì€ Updateì—ì„œ ì²˜ë¦¬ */ }
+
+    // ====== ë‚´ë¶€ êµ¬í˜„ ======
+
+    private IEnumerator BasicAttack()
+    {
+        isAttacking = true;
+        yield return FreezeSeconds(basicStiffTime);
+
+        currentDamage = basicDamage;
+        using (new Scope(this, attackCollider, currentDamage))
+            yield return new WaitForSeconds(basicAttackTime);
+
+        isAttacking = false;
+    }
+
+    private IEnumerator HoldAttackTierRoutine(int tier)
+    {
+        isAttacking = true;
+
+        float active; Vector2 off, scl;
+        switch (tier)
+        {
+            case 3: currentDamage = tier3Damage; active = tier3ActiveTime; off = tier3ColliderOffset; scl = tier3ColliderScale; break;
+            case 2: currentDamage = tier2Damage; active = tier2ActiveTime; off = tier2ColliderOffset; scl = tier2ColliderScale; break;
+            default: currentDamage = tier1Damage; active = tier1ActiveTime; off = tier1ColliderOffset; scl = tier1ColliderScale; break;
+        }
+
+        var freeze = StartCoroutine(FreezeSeconds(active));
+        using (new Scope(this, attackCollider, currentDamage, off, scl))
+            yield return new WaitForSeconds(active);
+        if (freeze != null) yield return freeze;
+
+        isAttacking = false;
+    }
+
+    private IEnumerator DashTimeoutGuard()
+    {
+        float t = 0f;
+        while (isDashing && t < dashMaxDuration)
+        {
+            t += Time.deltaTime;
+            yield return null;
+        }
+        if (isDashing) StopDash();
+    }
+
+    private void DashTick()
+    {
+        // ê°•ì œ ì´ë™ ìœ ì§€
+        ForceDashMove();
+
+        // ì ‘ì´‰ ë°ë¯¸ì§€ ê°„ê²© ê´€ë¦¬(ì¶©ëŒ ì´ë²¤íŠ¸ì—ì„œ ì‹¤ì œ ë°ë¯¸ì§€ ì²˜ë¦¬)
+        if (Time.time - lastDashHitTime > dashHitInterval)
+            lastDashHitTime = Time.time;
+    }
+
+    private void ForceDashMove()
+    {
+        if (_rb == null) return;
+        float sign = isFacingRight ? 1f : -1f;
+        float v = runSpeed * dashSpeedMultiplier;
+        _rb.linearVelocity = new Vector2(sign * v, _rb.linearVelocity.y);
+    }
+
+    private IEnumerator FreezeSeconds(float sec)
+    {
+        float end = Time.time + sec;
+        while (Time.time < end) { FreezeFrame(); yield return null; }
+    }
+
+    private void FreezeFrame()
+    {
+        if (_rb) _rb.linearVelocity = new Vector2(0f, _rb.linearVelocity.y);
+        moveSpeed = 0f; // CharacterBase ì´ë™ ì°¨ë‹¨
+    }
+
+    // === Guard shrinking (ë§ˆìˆ ì‚¬ì™€ ë™ì¼ íŒ¨í„´) ===
+    private void GuardTick()
+    {
+        if (!ShieldObject) return;
+        var s = ShieldObject.transform.localScale
+              - new Vector3(shieldScaleDecrease, shieldScaleDecrease, 0f) * Time.deltaTime;
+        ShieldObject.transform.localScale = s;
+        if (s.x <= minShieldScale)
+        {
+            ShieldObject.SetActive(false);
+            StartCoroutine(ImmobilizeCharacter());
+            StartCoroutine(RegenShield());
+            isGuarding = false;
+        }
+    }
+
+    private IEnumerator RegenShield()
+    {
+        yield return new WaitForSeconds(shieldRegenTime);
+        if (ShieldObject) ShieldObject.transform.localScale = initialShieldScale;
+    }
+
+    // === Attack hit ===
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (!photonView.IsMine) return;
+        if (attackCollider == null || !attackCollider.enabled) return;
+        if (other == null || !other.CompareTag("Player")) return;
+
+        var target = other.GetComponent<CharacterBase>(); if (target == null) return;
+        var tpv = target.photonView; if (tpv == null || tpv.Owner == photonView.Owner) return;
+
+        // ì¬íˆíŠ¸ ì¿¨íƒ€ì„
+        int aid = tpv.Owner != null ? tpv.Owner.ActorNumber : 0;
+        if (_lastHitAt.TryGetValue(aid, out float t) && Time.time - t < rehitCooldown) return;
+        _lastHitAt[aid] = Time.time;
+
+        tpv.RPC("RPC_TakeDamage", RpcTarget.All, isDashing ? dashTickDamage : currentDamage);
+    }
+
+    // ê³µê²© ì½œë¼ì´ë” ë²”ìœ„/ì˜¤í”„ì…‹ ìˆ˜ëª… ê´€ë¦¬ìš©
+    private readonly struct Scope : System.IDisposable
+    {
+        private readonly Collider2D col;
+        private readonly Vector3? pos;
+        private readonly Vector3? scale;
+        private readonly BreakerCharacter owner;
+
+        public Scope(BreakerCharacter o, Collider2D c, float dmg, Vector2? offset = null, Vector2? scl = null)
+        {
+            owner = o; col = c; owner.currentDamage = dmg;
+            if (c)
+            {
+                pos = c.transform.localPosition; scale = c.transform.localScale;
+                if (offset.HasValue)
+                {
+                    float dir = o.isFacingRight ? 1f : -1f;
+                    c.transform.localPosition = new Vector3(offset.Value.x * dir, offset.Value.y, c.transform.localPosition.z);
+                }
+                if (scl.HasValue)
+                {
+                    c.transform.localScale = new Vector3(scl.Value.x, scl.Value.y, c.transform.localScale.z);
+                }
+                c.enabled = true;
+            }
+            else { pos = null; scale = null; }
+        }
+
+        public void Dispose()
+        {
+            if (col)
+            {
+                if (pos.HasValue) col.transform.localPosition = pos.Value;
+                if (scale.HasValue) col.transform.localScale = scale.Value;
+                col.enabled = false;
+            }
+        }
     }
 }

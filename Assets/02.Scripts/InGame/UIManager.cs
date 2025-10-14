@@ -217,31 +217,52 @@ public class UIManager : MonoBehaviourPunCallbacks
     }
     public void OpenEventLotteryPanel()
     {
-        if (eventLotteryPanel != null && !eventLotteryPanel.gameObject.activeSelf)
-            eventLotteryPanel.gameObject.SetActive(true);
+        if (eventLotteryPanel == null) { Debug.LogError("[UI] EventLotteryPanel ref missing"); return; }
 
+        // 1) 패널 오브젝트를 먼저 켠다 (코루틴 가능 상태)
+        eventLotteryPanel.gameObject.SetActive(true);
+        if (eventLotteryPanel.panelRoot != null)
+            eventLotteryPanel.panelRoot.SetActive(true);
+
+        // 2) 프로퍼티 준비될 때까지 기다렸다가 열기
         StopCoroutine(nameof(Co_OpenLotteryWhenReady));
         StartCoroutine(Co_OpenLotteryWhenReady());
+    }
+    public void OpenEventLotteryPanelImmediate(string optionsCsv, string winnerId)
+    {
+        if (eventLotteryPanel == null)
+        {
+            Debug.LogError("[UI] EventLotteryPanel ref missing");
+            return;
+        }
+        // 패널 먼저 켜고
+        if (eventLotteryPanel.panelRoot != null && !eventLotteryPanel.panelRoot.activeSelf)
+            eventLotteryPanel.panelRoot.SetActive(true);
+
+        eventLotteryPanel.OpenImmediate(optionsCsv, winnerId);
     }
 
     private IEnumerator Co_OpenLotteryWhenReady()
     {
-        // RoomProps에 두 키가 생길 때까지 기다림 (+ Done=false)
+        // 룸/프로퍼티 확보
+        while (PhotonNetwork.CurrentRoom == null) yield return null;
+
+        ExitGames.Client.Photon.Hashtable props = null;
+        // 준비 조건: LotteryOpen==true && Options, Winner 존재 && Done==false
         while (true)
         {
-            var room = PhotonNetwork.CurrentRoom;
-            if (room != null && room.CustomProperties != null)
-            {
-                bool hasOpt = room.CustomProperties.TryGetValue("LotteryOptions", out var o) && o is string so && !string.IsNullOrEmpty(so);
-                bool hasWin = room.CustomProperties.TryGetValue("LotteryWinner", out var w) && w is string sw && !string.IsNullOrEmpty(sw);
-                bool notDone = !(room.CustomProperties.TryGetValue("LotteryDone", out var d) && d is bool b && b);
+            props = PhotonNetwork.CurrentRoom.CustomProperties;
+            bool hasOpen = props.TryGetValue("LotteryOpen", out var open) && (open is bool bo && bo);
+            bool hasOpt = props.TryGetValue("LotteryOptions", out var opt) && opt is string s1 && !string.IsNullOrEmpty(s1);
+            bool hasWinner = props.TryGetValue("LotteryWinner", out var win) && win is string s2 && !string.IsNullOrEmpty(s2);
+            bool notDone = !(props.TryGetValue("LotteryDone", out var d) && d is bool bd && bd);
 
-                if (hasOpt && hasWin && notDone) break;
-            }
-            yield return null; // 다음 프레임
+            if (hasOpen && hasOpt && hasWinner && notDone) break;
+            yield return null;
         }
 
-        eventLotteryPanel?.OpenFromRoomProps();
+        // 3) 실제 열기
+        eventLotteryPanel.OpenFromRoomProps();
     }
 
     public void HideRespawnOverlay()

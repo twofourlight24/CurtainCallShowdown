@@ -2500,7 +2500,6 @@ GameObject:
   m_Component:
   - component: {fileID: 372358589}
   - component: {fileID: 372358588}
-  - component: {fileID: 372358590}
   m_Layer: 0
   m_Name: RoundFlowManager
   m_TagString: Untagged
@@ -2526,15 +2525,9 @@ MonoBehaviour:
   allGameModes:
   - Showdown
   - King of the Hill
-  - TagHunt
-  - ItemRush
-  - DodgeRain
   allRoundEvents:
-  - Spotlight
   - GoldenAward
-  - HotOnion
-  - Paparazzi
-  - StageMalfunction
+  - GoldenAward
 --- !u!4 &372358589
 Transform:
   m_ObjectHideFlags: 0
@@ -2550,28 +2543,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &372358590
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 372358587}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ObservedComponentsFoldoutOpen: 1
-  Group: 0
-  prefixField: -1
-  Synchronization: 3
-  OwnershipTransfer: 0
-  observableSearch: 2
-  ObservedComponents: []
-  sceneViewId: 3
-  InstantiationId: 0
-  isRuntimeInstantiated: 0
 --- !u!1 &394619233
 GameObject:
   m_ObjectHideFlags: 0
@@ -7434,7 +7405,6 @@ MonoBehaviour:
   reelContent: {fileID: 1716998939}
   itemTemplate: {fileID: 1271031495}
   resultText: {fileID: 149557787}
-  selectEdge: {fileID: 2049508132}
   preSpinTime: 2
   steadyTime: 2
   decelTime: 5

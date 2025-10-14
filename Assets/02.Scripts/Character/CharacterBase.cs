@@ -330,5 +330,4 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     // 각 캐릭터별로 다르게 구현할 추상 함수들
     public abstract void Attack();
     public abstract void Guard();
-    public abstract void UseSkill();
 }
