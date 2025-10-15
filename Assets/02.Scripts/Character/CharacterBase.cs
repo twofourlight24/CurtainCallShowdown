@@ -23,6 +23,8 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     public int LifeCount = 3;
     public CharacterCommandSet commandSet;
     [SerializeField] protected Animator anim;
+    private Vector3 _lastAnimPos;
+    public AnimatorRpcHub hub;
 
     [Header("Character Properties")]
     public GameObject ShieldObject; // 가드 기능을 위한 쉴드 오브젝트 추가
@@ -63,7 +65,11 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         }
         var owner = photonView.Owner;
         if (GameManager.Instance != null && owner != null)
-            GameManager.Instance.RegisterCharacter(owner, this.gameObject);
+        {
+            //  이미 같은 오너의 오브젝트가 캐시에 있으면 재등록 금지
+            if (GameManager.Instance.GetCharacterObject(owner) == null)
+                GameManager.Instance.RegisterCharacter(owner, this.gameObject);
+        }
     }
 
     protected void Start()
@@ -87,10 +93,12 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
             ShieldObject.SetActive(false);
         }
         anim = GetComponent<Animator>();
+        hub = GetComponentInParent<AnimatorRpcHub>();
     }
 
     void FixedUpdate()
     {
+
         // 핵심: 로컬 플레이어만 물리 연산을 수행하도록 보장
         if (photonView.IsMine && rb != null)
         {
@@ -141,10 +149,15 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     {
         moveDirection = direction;
     }
+    private bool _lastIsRunning;
     public void SetRunState(bool running)
     {
-        IsRunning = running;    
-        moveSpeed = running ? runSpeed : walkSpeed;
+        IsRunning = running; // 기존 로직 유지
+        if (_lastIsRunning != IsRunning)
+        {
+            _lastIsRunning = IsRunning;
+            AnimSetBool("IsRunning", IsRunning);        // ★ 변경 시에만 전파
+        }
     }
 
     /// <summary>
@@ -225,7 +238,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         {
             isGrounded = true;
             jumpCount = maxJumpCount;
-            anim?.SetBool("IsGrounded", true);
+            AnimSetBool("IsGrounded", true);
         }
 
         // 현재 밟고 있는 플랫폼 저장 (통과 점프를 위해)
@@ -247,7 +260,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         if (collision.gameObject.CompareTag("Ground") || collision.gameObject.CompareTag("Platform"))
         {
             isGrounded = false;
-            anim?.SetBool("IsGrounded", false);
+            AnimSetBool("IsGrounded", false);
         }
 
         if (collision.gameObject.CompareTag("Platform"))
@@ -337,19 +350,22 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         IsGoldenStatue = false;
         isImmobilized = false;
     }
-    protected void AnimTrigger(string name)
-    {
-        anim?.SetTrigger(name);
-        photonView.RPC(nameof(RPC_AnimTrigger), RpcTarget.Others, name);
-    }
 
-    [PunRPC]
-    void RPC_AnimTrigger(string name)
+    protected void AnimTrigger(string name) { hub?.SendTrigger(name); }
+    protected void AnimSetBool(string name, bool v) { hub?.SendBool(name, v); }
+
+    [PunRPC] // ★ PV와 같은 오브젝트에 있어야 함
+    private void RPC_AnimSetBool(string name, bool value)
     {
-        anim?.SetTrigger(name);
+        anim?.SetBool(name, value);                     // 원격
     }
-    public virtual void BeginHoldVisual() { anim?.SetBool("IsHolding", true); }
-    public virtual void EndHoldVisual() { anim?.SetBool("IsHolding", false); }
+    public virtual void BeginHoldVisual() { AnimSetBool("IsHolding", true); }
+    public virtual void EndHoldVisual() { AnimSetBool("IsHolding", false); }
+    protected void SetGuarding(bool v)
+    {
+        ShieldObject?.SetActive(v);                     // 기존 쉴드 토글
+        AnimSetBool("IsGuarding", v);                 
+    }
     public void SetInvincible(float second)
     {
         invincibleUntil = Time.time + second; // 예: 2초간 무적

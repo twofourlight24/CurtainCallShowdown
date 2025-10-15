@@ -19,7 +19,8 @@ GameObject:
   - component: {fileID: -6858673925582379217}
   - component: {fileID: 806187447489349797}
   - component: {fileID: 7221178271988199760}
-  m_Layer: 0
+  - component: {fileID: 2901549624770691917}
+  m_Layer: 8
   m_Name: Acrobat
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -212,6 +213,7 @@ MonoBehaviour:
   LifeCount: 3
   commandSet: {fileID: 11400000, guid: 6b59130e8ee064c4f8a5a38a1b27ea80, type: 2}
   anim: {fileID: 7221178271988199760}
+  hub: {fileID: 0}
   ShieldObject: {fileID: 6318155360007728826}
   immobilizedTime: 1
   gm: {fileID: 0}
@@ -320,6 +322,19 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &2901549624770691917
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4096762168184799637}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2f26a0cf9f7dd04a9d4eaf99ced189c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetAnimator: {fileID: 7221178271988199760}
 --- !u!1 &5330860466670608551
 GameObject:
   m_ObjectHideFlags: 0

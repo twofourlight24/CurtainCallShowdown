@@ -348,7 +348,8 @@ public class GameManager : MonoBehaviourPunCallbacks
             else myChar.SetActive(false);
         }
 
-        yield return new WaitForSeconds(delay);
+        float w = 0f;
+        while (GetCharacterObject(PhotonNetwork.LocalPlayer) != null && w < 2f) { yield return null; w += Time.deltaTime; }
 
         // 스폰 위치
         Vector3 pos = spawnPoints != null && spawnIndex >= 0 && spawnIndex < spawnPoints.Length
@@ -472,7 +473,21 @@ public class GameManager : MonoBehaviourPunCallbacks
         int spawnIndex = (me.ActorNumber - 1) % spawnPoints.Length;
         Vector3 pos = spawnPoints[spawnIndex].position;
         Quaternion rot = spawnPoints[spawnIndex].rotation;
+        GameObject existing = GetCharacterObject(me);
+        if (existing != null)
+        {
+            var view = existing.GetPhotonView();
+            if (view && view.IsMine)
+                PhotonNetwork.Destroy(existing);
 
+            float w = 0f;
+            while (existing != null && w < 2f)
+            {
+                yield return null;
+                existing = GetCharacterObject(me);
+                w += Time.deltaTime;
+            }
+        }
         var go = PhotonNetwork.Instantiate("Characters/" + prefabName, pos, rot);
         if (go != null)
         {

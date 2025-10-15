@@ -70,7 +70,7 @@ public class MagicianCharacter : CharacterBase
         {
             // 가드 시작 시 쉴드 활성화
             ShieldObject.SetActive(true);
-            anim?.SetBool("IsGuarding", true);
+            SetGuarding(true);
         }
     }
 
@@ -96,7 +96,7 @@ public class MagicianCharacter : CharacterBase
         if (ShieldObject != null)
         {
             ShieldObject.SetActive(false);
-            anim?.SetBool("IsGuarding", false);
+            SetGuarding(false);
         }
     }
 

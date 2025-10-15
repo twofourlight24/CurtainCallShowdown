@@ -19,7 +19,8 @@ GameObject:
   - component: {fileID: 7485213081243620986}
   - component: {fileID: 2886514117448565804}
   - component: {fileID: 6792386734854554941}
-  m_Layer: 0
+  - component: {fileID: 5775817844948678847}
+  m_Layer: 8
   m_Name: Dancer
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -236,6 +237,7 @@ MonoBehaviour:
   LifeCount: 3
   commandSet: {fileID: 11400000, guid: 6f08355621d769b4ab9924ee89b9c1fb, type: 2}
   anim: {fileID: 6792386734854554941}
+  hub: {fileID: 0}
   ShieldObject: {fileID: 4212806178424299200}
   immobilizedTime: 1
   gm: {fileID: 0}
@@ -316,6 +318,19 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &5775817844948678847
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 611092333110001771}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2f26a0cf9f7dd04a9d4eaf99ced189c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetAnimator: {fileID: 6792386734854554941}
 --- !u!1 &4212806178424299200
 GameObject:
   m_ObjectHideFlags: 0
