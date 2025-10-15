@@ -37,9 +37,12 @@ public class ShowdownMode : MonoBehaviourPunCallbacks, IGameMode
         foreach (var p in PhotonNetwork.PlayerList)
         {
             lives[p] = startingLives;
-            gm.uiManager.UpdateLifeUI(p, startingLives); // UI 초기화
         }
-
+        // 먼저 아이콘 생성
+        gm.uiManager.BuildLifeIconsForAll(startingLives);
+        // 그리고 초기 값 반영(토글)
+        foreach (var p in PhotonNetwork.PlayerList)
+            gm.uiManager.UpdateLifeUI(p, startingLives);
     }
 
     public void EndRound()

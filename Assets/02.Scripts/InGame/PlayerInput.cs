@@ -135,6 +135,7 @@ public class PlayerInput : MonoBehaviourPun, IPunObservable
                 if (c.key == key && c.type == CharacterCommandSet.CommandType.Hold)
                 {
                     hasHoldForThisKey = true;
+                    controlledCharacter.BeginHoldVisual();
                     break;
                 }
             }
@@ -244,6 +245,7 @@ public class PlayerInput : MonoBehaviourPun, IPunObservable
                     else
                     {
                         // 홀드 임계 미만 → 탭 취급: 기본 공격
+                        controlledCharacter.EndHoldVisual();
                         controlledCharacter.Attack();
                         anyExecuted = true;
                     }

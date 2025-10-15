@@ -1,6 +1,7 @@
-using UnityEngine;
 using Photon.Pun;
 using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
 public class MagicianCharacter : CharacterBase
 {
@@ -15,6 +16,13 @@ public class MagicianCharacter : CharacterBase
     public float minShieldScale = 0.1f; // 쉴드가 파괴되는 최소 크기
     public float shieldRegenTime = 2.0f; // 쉴드 재생성 시간
     private Vector3 initialShieldScale;
+
+    [Header("Dash Hit")]
+    public Collider2D DashCollider;       // 트리거
+    public float dashDamage = 12f;         // 대쉬 공격력
+    public float dashRehitCooldown = 1f;   // 동일 대상 재타격 쿨타임
+    private bool dashHitActive = false;
+    private readonly Dictionary<int, float> _dashLastHit = new();
 
     private bool isGuarding = false;
 
@@ -62,6 +70,7 @@ public class MagicianCharacter : CharacterBase
         {
             // 가드 시작 시 쉴드 활성화
             ShieldObject.SetActive(true);
+            anim?.SetBool("IsGuarding", true);
         }
     }
 
@@ -87,6 +96,7 @@ public class MagicianCharacter : CharacterBase
         if (ShieldObject != null)
         {
             ShieldObject.SetActive(false);
+            anim?.SetBool("IsGuarding", false);
         }
     }
 
@@ -118,7 +128,7 @@ public class MagicianCharacter : CharacterBase
     /// </summary>
     public override void Attack()
     {
-        Debug.Log("마술사 캐릭터의 강한 공격!");
+        AnimTrigger("Attack");
         if (cardPrefab != null && ShootPos != null)
         {
             // 네트워크로 발사체 생성
@@ -134,7 +144,10 @@ public class MagicianCharacter : CharacterBase
             }
         }
     }
-
+    protected override void OnDamaged(float finalDamage)
+    {
+        AnimTrigger("Hit");
+    }
 
     public override void Guard()
     {
@@ -149,9 +162,11 @@ public class MagicianCharacter : CharacterBase
 
     private IEnumerator HoldAttackRoutine()
     {
+        anim?.SetBool("IsHolding", true);
         yield return new WaitForSeconds(0.1f);
         float direction = isFacingRight ? 1f : -1f;
-
+        AnimTrigger("Attack");
+        anim?.SetBool("IsHolding", false);
         for (int i = 0; i < 4; i++)
         {
             GameObject card = PhotonNetwork.Instantiate(cardPrefab.name, ShootPos.position, Quaternion.identity);
@@ -164,12 +179,15 @@ public class MagicianCharacter : CharacterBase
     public void DashAttack()
     {
         if (!photonView.IsMine) return;
-        Debug.Log("[Magician] DashAttack 돌진 시작!");
+        AnimTrigger("Dash");
         StartCoroutine(DashAttackRoutine());
     }
 
     private IEnumerator DashAttackRoutine()
     {
+        dashHitActive = true;
+        if (DashCollider) DashCollider.enabled = true;
+
         float dashDistance = 3f;
         float dashTime = 0.2f;
         float elapsed = 0f;
@@ -183,21 +201,8 @@ public class MagicianCharacter : CharacterBase
             elapsed += Time.deltaTime;
             yield return null;
         }
-
-        transform.position = target;
-        // 관통 데미지 판정
-        RaycastHit2D[] hits = Physics2D.RaycastAll(transform.position, isFacingRight ? Vector2.right : Vector2.left, dashDistance);
-        foreach (var hit in hits)
-        {
-            if (hit.collider != null && hit.collider.CompareTag("Player"))
-            {
-                var enemytarget = hit.collider.GetComponent<CharacterBase>();
-                if (enemytarget != null)
-                {
-                    enemytarget.photonView.RPC("RPC_TakeDamage", RpcTarget.All, 10f);
-                }
-            }
-        }
+        dashHitActive = false;
+        if (DashCollider) DashCollider.enabled = false;
     }
 
     /// <summary>
@@ -205,6 +210,7 @@ public class MagicianCharacter : CharacterBase
     /// </summary>
     private void OnTriggerEnter2D(Collider2D other)
     {
+        HandleDashHit(other);
         // 'Card' 태그를 가진 오브젝트에 맞았을 때
         if (other.CompareTag("Card"))
         {
@@ -216,5 +222,27 @@ public class MagicianCharacter : CharacterBase
                 PhotonNetwork.Destroy(other.gameObject);
             }
         }
+    }
+    private void OnTriggerStay2D(Collider2D other) => HandleDashHit(other);
+
+    private void HandleDashHit(Collider2D other)
+    {
+        if (!photonView.IsMine) return;
+        if (!dashHitActive) return;
+        if (DashCollider == null || !DashCollider.enabled) return;
+        if (other == null) return;
+
+        // 내 대쉬 콜라이더가 맞닿은 상대만 처리(원한다면 레이어/태그로 더 좁혀도 됨)
+        var target = other.GetComponentInParent<CharacterBase>();
+        if (target == null) return;
+
+        var tpv = target.photonView;
+        if (tpv == null || tpv.Owner == photonView.Owner) return; // 자기 자신/동일 소유자 제외
+
+        int aid = tpv.Owner != null ? tpv.Owner.ActorNumber : 0;
+        if (_dashLastHit.TryGetValue(aid, out var t) && Time.time - t < dashRehitCooldown) return;
+        _dashLastHit[aid] = Time.time;
+
+        tpv.RPC("RPC_TakeDamage", RpcTarget.All, dashDamage);
     }
 }

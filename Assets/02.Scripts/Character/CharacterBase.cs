@@ -22,6 +22,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     public int maxJumpCount = 2; // 최대 점프 횟수 추가
     public int LifeCount = 3;
     public CharacterCommandSet commandSet;
+    [SerializeField] protected Animator anim;
 
     [Header("Character Properties")]
     public GameObject ShieldObject; // 가드 기능을 위한 쉴드 오브젝트 추가
@@ -85,6 +86,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         {
             ShieldObject.SetActive(false);
         }
+        anim = GetComponent<Animator>();
     }
 
     void FixedUpdate()
@@ -92,6 +94,10 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         // 핵심: 로컬 플레이어만 물리 연산을 수행하도록 보장
         if (photonView.IsMine && rb != null)
         {
+            anim?.SetFloat("Speed", Mathf.Abs(rb.linearVelocity.x));
+            anim?.SetFloat("VerticalSpeed", rb.linearVelocity.y);
+            anim?.SetBool("IsRunning", IsRunning);
+
             if (isImmobilized)
             {
                 rb.linearVelocity = Vector2.zero; // 캐릭터가 움직이지 못하도록 함
@@ -151,6 +157,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); // 기존 y 속도 초기화
             rb.AddForce(new Vector2(0, jumpPower), ForceMode2D.Impulse);
             jumpCount--;
+            AnimTrigger("Jump");
         }
     }
 
@@ -218,12 +225,20 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         {
             isGrounded = true;
             jumpCount = maxJumpCount;
+            anim?.SetBool("IsGrounded", true);
         }
 
         // 현재 밟고 있는 플랫폼 저장 (통과 점프를 위해)
         if (collision.gameObject.CompareTag("Platform"))
         {
             currentPlatformCollider = collision.collider;
+
+        }
+        if(collision.gameObject.CompareTag("Hazard"))
+        {
+            // Hazard에 닿으면 즉시 사망
+            CurHp = 0;
+            Die();
         }
     }
 
@@ -232,6 +247,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         if (collision.gameObject.CompareTag("Ground") || collision.gameObject.CompareTag("Platform"))
         {
             isGrounded = false;
+            anim?.SetBool("IsGrounded", false);
         }
 
         if (collision.gameObject.CompareTag("Platform"))
@@ -256,7 +272,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         {
             finalDmg = Mathf.Round(dmg * 0.2f); // 80% 감소 → 20%만 적용, 반올림
         }
-
+        OnDamaged(dmg);
         CurHp -= dmg;
         if (CurHp <= 0)
         {
@@ -270,6 +286,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
 
         Debug.Log($"{photonView.Owner.NickName} took {dmg} damage. HP={CurHp}");
     }
+    protected virtual void OnDamaged(float finalDamage) { }
     public void Die()
     {
         if(isDead) return; // 이미 죽은 상태면 무시  
@@ -320,7 +337,19 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         IsGoldenStatue = false;
         isImmobilized = false;
     }
+    protected void AnimTrigger(string name)
+    {
+        anim?.SetTrigger(name);
+        photonView.RPC(nameof(RPC_AnimTrigger), RpcTarget.Others, name);
+    }
 
+    [PunRPC]
+    void RPC_AnimTrigger(string name)
+    {
+        anim?.SetTrigger(name);
+    }
+    public virtual void BeginHoldVisual() { anim?.SetBool("IsHolding", true); }
+    public virtual void EndHoldVisual() { anim?.SetBool("IsHolding", false); }
     public void SetInvincible(float second)
     {
         invincibleUntil = Time.time + second; // 예: 2초간 무적

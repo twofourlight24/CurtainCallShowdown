@@ -37,6 +37,9 @@ public class SelectCharacterManager : MonoBehaviourPunCallbacks
     private bool selectionComplete = false;
     private bool isInitialized = false;
 
+    private bool allowDuplication = true;
+    private readonly HashSet<string> takenPrefabs = new HashSet<string>();
+
     void Start()
     {
         // 모든 클라가 마스터의 LoadLevel을 따라가도록
@@ -53,6 +56,12 @@ public class SelectCharacterManager : MonoBehaviourPunCallbacks
         selectCharacterPanel.SetActive(true);
         InitializeCharacterButtons();
         LoadGameSettings();
+        if (PhotonNetwork.CurrentRoom != null &&
+        PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("AllowDuplication", out object allow) &&
+        allow is bool b) allowDuplication = b;
+        else allowDuplication = true; // 키가 없으면 허용
+
+        UpdateCharacterButtonsInteractivity();
 
         // 지연 없이 즉시 초기화
         InitializePlayerPanels();
@@ -105,6 +114,7 @@ public class SelectCharacterManager : MonoBehaviourPunCallbacks
         // 현재 방의 플레이어 수에 맞게 UI 패널 활성화 및 설정
         playerIndices.Clear();
         int index = 0;
+        UpdateCharacterButtonsInteractivity();
         foreach (var player in PhotonNetwork.PlayerList)
         {
             if (index >= playerInfoPanels.Length) break;
@@ -146,8 +156,8 @@ public class SelectCharacterManager : MonoBehaviourPunCallbacks
             characterIcons[i].gameObject.SetActive(false);
             readyCheckImages[i].SetActive(false);
         }
-
         playerIndices.Clear();
+        UpdateCharacterButtonsInteractivity();
         int index = 0;
         foreach (var player in PhotonNetwork.PlayerList)
         {
@@ -195,21 +205,38 @@ public class SelectCharacterManager : MonoBehaviourPunCallbacks
             gameModeText.text = $"게임 모드: {mode}";
         if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("MapName", out object map))
             mapText.text = $"맵: {map}";
+
+        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("AllowDuplication", out object allow) &&
+            allow is bool b) allowDuplication = b;
+        else allowDuplication = true; // 키 없으면 허용 기본
+
+        UpdateCharacterButtonsInteractivity(); // ← 추가
     }
 
-    public void OnCharacterSelected(int characterIndex)
+    public void OnCharacterSelected(int index)
     {
-        if (selectionComplete || selectButton.interactable == false) return;
+        var cd = allCharacters[index];
+        string prefab = cd.data.characterPrefab?.name;
+        if (string.IsNullOrEmpty(prefab)) return;
 
-        var cd = allCharacters[characterIndex];
-        string name = cd.data.characterName;
-        selectedCharacterNameText.text = $"선택 캐릭터: {name}";
+        if (!allowDuplication)
+        {
+            RebuildTakenSet();
+            string mine = LocalSelectedPrefab();
+            if (takenPrefabs.Contains(prefab) && prefab != mine)
+            {
+                characterGuideText.text = "이미 선택된 캐릭터입니다.";
+                return;
+            }
+        }
+
+        PhotonHashtable props = new PhotonHashtable { { "SelectedCharacterName", prefab } };
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+
+        selectedCharacterNameText.text = $"선택 캐릭터: {cd.data.characterName}";
         characterGuideText.text = cd.data.characterDescription;
 
-        // 선택된 캐릭터의 프리팹 이름을 저장 (정식 API 한 줄이면 충분)
-        PhotonHashtable props = new PhotonHashtable { { "SelectedCharacterName", cd.data.characterPrefab.name } };
-        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
-        // PhotonNetwork.SetPlayerCustomProperties(props); // ❌ 존재하지 않는 API — 제거
+        UpdateCharacterButtonsInteractivity();
     }
 
     public void OnSelectButtonPressed()
@@ -233,7 +260,42 @@ public class SelectCharacterManager : MonoBehaviourPunCallbacks
         PhotonHashtable props = new PhotonHashtable { { "IsReady", isReady } };
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);
     }
+    private void RebuildTakenSet()
+    {
+        takenPrefabs.Clear();
+        foreach (var p in PhotonNetwork.PlayerList)
+        {
+            if (p.CustomProperties.TryGetValue("SelectedCharacterName", out object o) &&
+                o is string prefab && !string.IsNullOrEmpty(prefab))
+            {
+                takenPrefabs.Add(prefab);
+            }
+        }
+    }
+    private string LocalSelectedPrefab()
+    {
+        if (PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue("SelectedCharacterName", out object o) &&
+            o is string prefab) return prefab;
+        return null;
+    }
 
+    // ===== [버튼 상호작용 갱신] =====
+    private void UpdateCharacterButtonsInteractivity()
+    {
+        RebuildTakenSet();
+
+        string mine = LocalSelectedPrefab(); // 내 선택은 계속 가능
+        for (int i = 0; i < characterButtons.Length; i++)
+        {
+            var btn = characterButtons[i].GetComponent<Button>();
+            if (!btn) continue;
+
+            string prefab = allCharacters[i].data.characterPrefab?.name;
+            bool takenByOthers = takenPrefabs.Contains(prefab) && prefab != mine;
+
+            btn.interactable = allowDuplication || !takenByOthers;
+        }
+    }
     public override void OnPlayerPropertiesUpdate(Player targetPlayer, PhotonHashtable changedProps)
     {
         if (!isInitialized) return;
@@ -265,7 +327,7 @@ public class SelectCharacterManager : MonoBehaviourPunCallbacks
                 characterIcons[pIndex].gameObject.SetActive(false);
             }
         }
-
+        UpdateCharacterButtonsInteractivity();
         if (changedProps.ContainsKey("IsReady"))
         {
             bool isReady = changedProps["IsReady"] is bool b && b;
@@ -286,6 +348,7 @@ public class SelectCharacterManager : MonoBehaviourPunCallbacks
     {
         // 선택 씬에선 원래 입/퇴장 없지만, 방어적 코드로 유지
         InitializePlayerPanels();
+        UpdateCharacterButtonsInteractivity();
         if (PhotonNetwork.IsMasterClient) CheckAndStartGame();
     }
 
@@ -293,6 +356,7 @@ public class SelectCharacterManager : MonoBehaviourPunCallbacks
     {
         // 선택 씬에선 원래 입/퇴장 없지만, 방어적 코드로 유지
         InitializePlayerPanels();
+        UpdateCharacterButtonsInteractivity();
     }
 
     /// <summary>

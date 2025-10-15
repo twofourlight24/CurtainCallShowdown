@@ -39,7 +39,7 @@ public class StartGamePanel : MonoBehaviour
     private IEnumerator Co_Run(string modeName, string brief)
     {
         // 1) 가이드 표시
-        if (guideText != null) guideText.text = $"공연 장르 : <b>{modeName}</b>";
+        if (guideText != null) guideText.text = $"게임 모드 : <b>{modeName}</b>";
         if (smallGuideText != null) smallGuideText.text = brief;
 
         if (guideText != null) guideText.gameObject.SetActive(true);

@@ -170,11 +170,16 @@ public class LobbyManager : MonoBehaviourPunCallbacks
         ClearRoomListUI();
         foreach (RoomInfo info in cachedRoomList.Values)
         {
+            // ¾ÈÀü¸Á: ¼û±è/´ÝÈû/ÇÃ·¹ÀÌÁß ¹æÀº ½ºÅµ
+            if (!info.IsOpen || !info.IsVisible) continue;
+            if (info.CustomProperties != null &&
+                info.CustomProperties.ContainsKey("RoomState") &&
+                (string)info.CustomProperties["RoomState"] == "Playing") continue;
+
             GameObject btn = Instantiate(roomButtonPrefab, roomListParent);
             RoomButton rb = btn.GetComponent<RoomButton>();
             string mode = info.CustomProperties.ContainsKey("Mode") ? (string)info.CustomProperties["Mode"] : "";
             string pw = info.CustomProperties.ContainsKey("PW") ? (string)info.CustomProperties["PW"] : "";
-
             rb.Setup(info.Name, mode, info.PlayerCount, info.MaxPlayers, !string.IsNullOrEmpty(pw), () =>
             {
                 OnClickRoomButton(info.Name, pw);

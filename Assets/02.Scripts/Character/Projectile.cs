@@ -12,6 +12,8 @@ public class Projectile : MonoBehaviourPun
     private float maxDistance;
     public float damage = 3f; // 발사체의 공격력
 
+    private SpriteRenderer spriteRenderer;
+
     /// <summary>
     /// 발사체를 초기화하는 함수.
     /// </summary>
@@ -25,6 +27,17 @@ public class Projectile : MonoBehaviourPun
         direction = initialDirection;
         speed = initialSpeed;
         maxDistance = distance;
+
+        if (spriteRenderer == null)
+            spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null)
+            spriteRenderer.flipX = direction.x < 0;
+    }
+
+    void Awake()
+    {
+        // SpriteRenderer 캐싱
+        spriteRenderer = GetComponent<SpriteRenderer>();
     }
 
     void Update()

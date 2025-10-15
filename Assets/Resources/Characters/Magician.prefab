@@ -72,6 +72,7 @@ Transform:
   m_Children:
   - {fileID: 2830724241130944498}
   - {fileID: 3388993588175639634}
+  - {fileID: 7724465274772075303}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &5578684771089756730
@@ -118,7 +119,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 1
-  m_Sprite: {fileID: 168046320194774238, guid: 482d04209968c444cb8e71b898258934, type: 3}
+  m_Sprite: {fileID: 4235522635240076309, guid: 1670b80e7178b3349819cf86d718c8c0, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -203,17 +204,17 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: -0.062931776, y: 0.06293213}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1.8, y: 2.75}
+    pivot: {x: 0.58736086, y: 0.4088576}
+    oldSize: {x: 1.7666667, y: 2.74}
     newSize: {x: 3.6, y: 5.5}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1.8, y: 2.75}
+  m_Size: {x: 1.3217168, y: 2.422754}
   m_EdgeRadius: 0
 --- !u!50 &9130880881028372621
 Rigidbody2D:
@@ -288,6 +289,7 @@ MonoBehaviour:
   maxJumpCount: 2
   LifeCount: 3
   commandSet: {fileID: 11400000, guid: ae24ac3f1671d8b4ea52cae27cda3edd, type: 2}
+  anim: {fileID: 2756498665834551587}
   ShieldObject: {fileID: 3767556995211023607}
   immobilizedTime: 1
   gm: {fileID: 0}
@@ -298,6 +300,9 @@ MonoBehaviour:
   shieldScaleDecrease: 0.3
   minShieldScale: 0.1
   shieldRegenTime: 2
+  DashCollider: {fileID: 0}
+  dashDamage: 12
+  dashRehitCooldown: 0.15
 --- !u!114 &1329297475688073415
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -342,6 +347,84 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0657d022ab907b42ad78e3a2a7e1be0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &3749739511747581649
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7724465274772075303}
+  - component: {fileID: 7843298583021043666}
+  m_Layer: 6
+  m_Name: DashCollider
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7724465274772075303
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3749739511747581649}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3282744891983203987}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!61 &7843298583021043666
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3749739511747581649}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 1
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0.2357738, y: 0.07646707}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1.7264371, y: 1.2803793}
+  m_EdgeRadius: 0
 --- !u!1 &3767556995211023607
 GameObject:
   m_ObjectHideFlags: 0
@@ -369,7 +452,7 @@ Transform:
   m_GameObject: {fileID: 3767556995211023607}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.09, y: -0.05, z: 0}
+  m_LocalPosition: {x: -0, y: 0.09, z: 0}
   m_LocalScale: {x: 3.1820624, y: 3.1820624, z: 3.1820624}
   m_ConstrainProportionsScale: 0
   m_Children: []

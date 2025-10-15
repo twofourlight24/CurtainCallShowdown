@@ -18,6 +18,10 @@ public class UIManager : MonoBehaviourPunCallbacks
     public Color defaultHpBarColor = Color.green;
     public GameObject[] playerLifeIconsParent;
 
+    [Header("UI - Life Icons")]
+    public GameObject lifeIconPrefab;   // <- 인스펙터에 지정
+    public int maxLivesVisual = 3;      // 기본 최대 갯수
+
     [Header("UI - Other")]
     public GameObject respawnOverlayPanel;  // 회색 이미지 패널 (Canvas 안)
     public TMP_Text respawnCountdownText;   // 남은 시간 표시
@@ -107,7 +111,27 @@ public class UIManager : MonoBehaviourPunCallbacks
             }
         }
     }
+    public void BuildLifeIconsForAll(int livesPerPlayer)
+    {
+        // 각 플레이어 패널 밑에 기존 아이콘 지우고 새로 생성
+        for (int i = 0; i < playerLifeIconsParent.Length; i++)
+        {
+            var parent = playerLifeIconsParent[i];
+            if (!parent) continue;
 
+            // 기존 제거
+            for (int c = parent.transform.childCount - 1; c >= 0; c--)
+                Destroy(parent.transform.GetChild(c).gameObject);
+
+            // 새로 livesPerPlayer 만큼 생성
+            int n = Mathf.Max(0, livesPerPlayer);
+            for (int k = 0; k < n; k++)
+            {
+                var icon = Instantiate(lifeIconPrefab, parent.transform);
+                icon.SetActive(true);
+            }
+        }
+    }
 
     // 기존 UpdateLifeUI 교체: 같은 인덱싱 규칙 사용
     public void UpdateLifeUI(Player targetPlayer, int currentLives)
