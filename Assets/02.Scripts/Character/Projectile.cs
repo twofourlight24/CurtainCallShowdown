@@ -10,7 +10,7 @@ public class Projectile : MonoBehaviourPun
     private Vector2 direction;
     private float speed;
     private float maxDistance;
-    public float damage = 10f; // 발사체의 공격력
+    public float damage = 3f; // 발사체의 공격력
 
     /// <summary>
     /// 발사체를 초기화하는 함수.

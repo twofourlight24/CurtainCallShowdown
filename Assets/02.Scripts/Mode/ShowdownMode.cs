@@ -18,7 +18,7 @@ public class ShowdownMode : MonoBehaviourPunCallbacks, IGameMode
     private readonly HashSet<Player> invinciblePlayers = new();
 
     [Header("Config")]
-    public int startingLives = 1;
+    public int startingLives = 3;
     public float respawnDelay = 5f;
     public float invincibleTime = 2f;
     public string GetBriefDescription() => "모든 플레이어를 처치하세요!";

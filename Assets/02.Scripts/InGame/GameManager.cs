@@ -98,6 +98,7 @@ public class GameManager : MonoBehaviourPunCallbacks
         var me = PhotonNetwork.LocalPlayer;
         var ht = new ExitGames.Client.Photon.Hashtable { { PROP_SCENE_READY, false } };
         me.SetCustomProperties(ht);
+        RoundEventManager.Instance?.RefreshContext();
     }
 
     // === 맵/스폰 세팅 ===

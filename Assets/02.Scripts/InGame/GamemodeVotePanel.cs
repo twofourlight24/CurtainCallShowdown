@@ -107,7 +107,7 @@ public class GamemodeVotePanel : MonoBehaviourPunCallbacks
             }
         }
 
-        voteDuration = 5;
+        voteDuration = 15;
         resultShown = false;
         voteActive = true;
 

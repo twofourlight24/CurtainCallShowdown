@@ -194,7 +194,7 @@ public class MagicianCharacter : CharacterBase
                 var enemytarget = hit.collider.GetComponent<CharacterBase>();
                 if (enemytarget != null)
                 {
-                    enemytarget.photonView.RPC("RPC_TakeDamage", RpcTarget.All, 20f);
+                    enemytarget.photonView.RPC("RPC_TakeDamage", RpcTarget.All, 10f);
                 }
             }
         }

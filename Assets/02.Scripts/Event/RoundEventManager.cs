@@ -10,7 +10,6 @@ public class RoundEventContext
 /// <summary>누적 이벤트를 관리하고, 각 라운드 시작/종료 시 Enable/Disable 수행</summary>
 public class RoundEventManager : MonoBehaviour
 {
-
     public static RoundEventManager Instance { get; private set; }
 
     private Dictionary<string, IRoundEvent> registry = new();
@@ -32,10 +31,16 @@ public class RoundEventManager : MonoBehaviour
 
         // 이벤트 레지스트리 등록 (필요시 실제 구현으로 교체)
         Register(new SpotlightEvent());
-        Register(new GoldenAwardEvent());
+        var golden = gameObject.GetComponent<GoldenAwardEvent>();
+        if (golden == null) golden = gameObject.AddComponent<GoldenAwardEvent>();
+        Register(golden);
         Register(new HotOnionEvent());
         Register(new PaparazziEvent());
         Register(new StageMalfunctionEvent());
+    }
+    void Start()
+    {
+        RoundEventManager.Instance.EnableStackedEvents(new List<string> { "GoldenAward" });
     }
 
     public void Register(IRoundEvent ev)
@@ -60,8 +65,8 @@ public class RoundEventManager : MonoBehaviour
     }
     public void RefreshContext()
     {
-        // RefreshContext 메서드의 구현 내용을 여기에 추가하세요.
-        Debug.Log("RoundEventManager: Context refreshed.");
+        context.gm = GameManager.Instance;
+        context.ui = GameManager.Instance?.uiManager;
     }
     public void DisableAll()
     {

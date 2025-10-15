@@ -11,11 +11,11 @@ public class BreakerCharacter : CharacterBase
     [Header("Attack - Basic")]
     public float basicStiffTime = 0.2f;
     public float basicAttackTime = 0.18f;
-    public float basicDamage = 15f;
+    public float basicDamage = 6f;
 
     [Header("Attack - Hold (tiers)")]
     public float tier1HoldSec = 1.0f, tier2HoldSec = 2.0f, tier3HoldSec = 3.0f;
-    public float tier1Damage = 25f, tier2Damage = 40f, tier3Damage = 65f;
+    public float tier1Damage = 10f, tier2Damage = 15f, tier3Damage = 20f;
     public float tier1ActiveTime = 0.25f, tier2ActiveTime = 0.4f, tier3ActiveTime = 0.6f;
     public Vector2 tier1ColliderOffset = new(0.9f, 0f), tier2ColliderOffset = new(1.3f, 0f), tier3ColliderOffset = new(1.8f, 0f);
     public Vector2 tier1ColliderScale = new(1f, 1f), tier2ColliderScale = new(1.4f, 1.1f), tier3ColliderScale = new(1.8f, 1.2f);

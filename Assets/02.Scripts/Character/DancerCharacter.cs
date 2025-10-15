@@ -11,7 +11,7 @@ public class DancerCharacter : CharacterBase
     [Header("Attack - Basic")]
     public float basicStiffTime = 0.2f;     // 기본공격 경직(이동 불가)
     public float basicAttackTime = 0.18f;   // 콜라이더 on 유지시간
-    public float basicDamage = 15f;         // 기본공격 피해
+    public float basicDamage = 6f;         // 기본공격 피해
 
     [Header("Run-Hold (While Running + Hold J)")]
     public float runHoldTickDamage = 12f;   // 홀드 유지 중 접촉 피해

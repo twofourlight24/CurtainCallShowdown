@@ -251,6 +251,12 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
         if (isDead) return; // 이미 죽은 상태면 무시
         if(Time.time < invincibleUntil) return; // 무적 상태면 무시
 
+        float finalDmg = dmg;
+        if (ShieldObject != null && ShieldObject.activeSelf) // 가드 활성 상태
+        {
+            finalDmg = Mathf.Round(dmg * 0.2f); // 80% 감소 → 20%만 적용, 반올림
+        }
+
         CurHp -= dmg;
         if (CurHp <= 0)
         {

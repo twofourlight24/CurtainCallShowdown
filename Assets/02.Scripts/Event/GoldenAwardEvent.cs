@@ -21,8 +21,8 @@ public class GoldenAwardEvent : MonoBehaviourPunCallbacks, IRoundEvent
     private Coroutine loopCo;
 
     [Header("Settings")]
-    public float minStartDelay = 30f;        // 첫 발동 최소 시간
-    public Vector2 intervalRange = new Vector2(30f, 60f); // 발동 간격
+    public float minStartDelay = 0f;        // 첫 발동 최소 시간
+    public Vector2 intervalRange = new Vector2(5f, 10f); // 발동 간격
     public float statueDuration = 10f;       // 황금상 지속시간
     public Color goldColor = new Color(1f, 0.84f, 0.1f);
 
@@ -118,5 +118,15 @@ public class GoldenAwardEvent : MonoBehaviourPunCallbacks, IRoundEvent
             totalPoints[actor] += bonus;
         }
         goldenDamage.Clear();
+    }
+    public void Debug_TriggerNow()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        var players = PhotonNetwork.PlayerList
+            .Where(p => ctx?.gm?.GetCharacterObject(p) != null).ToList();
+        if (players.Count == 0) return;
+
+        var target = players[Random.Range(0, players.Count)];
+        photonView.RPC(nameof(RPC_ActivateGoldenAward), RpcTarget.All, target.ActorNumber, statueDuration);
     }
 }
