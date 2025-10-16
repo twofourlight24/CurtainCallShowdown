@@ -215,6 +215,8 @@ public class SelectCharacterManager : MonoBehaviourPunCallbacks
 
     public void OnCharacterSelected(int index)
     {
+        if (PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue("IsReady", out var r) && r is bool rb && rb)
+            return;
         var cd = allCharacters[index];
         string prefab = cd.data.characterPrefab?.name;
         if (string.IsNullOrEmpty(prefab)) return;
@@ -257,6 +259,11 @@ public class SelectCharacterManager : MonoBehaviourPunCallbacks
     private void SetReadyState(bool isReady)
     {
         selectButton.interactable = !isReady;
+        foreach (var go in characterButtons)
+        {
+            var btn = go.GetComponent<Button>();
+            if (btn) btn.interactable = !isReady;
+        }
         PhotonHashtable props = new PhotonHashtable { { "IsReady", isReady } };
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);
     }

@@ -299,6 +299,7 @@ MonoBehaviour:
   cardPrefab: {fileID: 3936075941075142554, guid: b81bb93b32dc45744b0e081cc82cc5bf, type: 3}
   cardSpeed: 20
   attackRange: 10
+  attackCooldown: 0.25
   shieldScaleDecrease: 0.3
   minShieldScale: 0.1
   shieldRegenTime: 2

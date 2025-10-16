@@ -70,6 +70,8 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
             if (GameManager.Instance.GetCharacterObject(owner) == null)
                 GameManager.Instance.RegisterCharacter(owner, this.gameObject);
         }
+        GameManager.Instance.RegisterCharacter(owner, gameObject);
+        GameManager.Instance.UpdatePlayerUI(owner);
     }
 
     protected void Start()
@@ -369,6 +371,12 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     public void SetInvincible(float second)
     {
         invincibleUntil = Time.time + second; // 예: 2초간 무적
+    }
+    [PunRPC]
+    public void RPC_SetHp(float v)
+    {
+        CurHp = v;
+        if (GameManager.Instance) GameManager.Instance.UpdatePlayerUI(photonView.Owner);
     }
 
     protected IEnumerator ImmobilizeCharacter()

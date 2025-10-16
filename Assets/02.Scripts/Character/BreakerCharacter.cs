@@ -185,14 +185,18 @@ public class BreakerCharacter : CharacterBase
 
     private IEnumerator FreezeSeconds(float sec)
     {
-        float end = Time.time + sec;
-        while (Time.time < end) { FreezeFrame(); yield return null; }
+        float originalSpeed = runSpeed; // 원래 이동속도 저장
+        runSpeed = 0f; // 움직임 차단
+
+        yield return new WaitForSeconds(sec);
+
+        runSpeed = originalSpeed;
     }
 
     private void FreezeFrame()
     {
         if (_rb) _rb.linearVelocity = new Vector2(0f, _rb.linearVelocity.y);
-        moveSpeed = 0f; // CharacterBase 이동 차단
+         // CharacterBase 이동 차단
     }
 
     // === Guard shrinking (마술사와 동일 패턴) ===

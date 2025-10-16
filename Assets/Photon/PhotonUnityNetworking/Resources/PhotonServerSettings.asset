@@ -63,6 +63,7 @@ MonoBehaviour:
   - RPC_Explode
   - RPC_AnimTrigger
   - RPC_AnimSetBool
+  - RPC_SetHp
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

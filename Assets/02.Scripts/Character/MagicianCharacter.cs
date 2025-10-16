@@ -1,4 +1,4 @@
-using Photon.Pun;
+ï»¿using Photon.Pun;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,21 +6,25 @@ using UnityEngine;
 public class MagicianCharacter : CharacterBase
 {
     [Header("Magician Attack Properties")]
-    public Transform ShootPos; // Ä«µå¸¦ ¹ß»çÇÒ À§Ä¡
-    public GameObject cardPrefab; // ¹ß»çÇÒ Ä«µå ÇÁ¸®ÆÕ
-    public float cardSpeed = 20f; // Ä«µåÀÇ ¼Óµµ
-    public float attackRange = 10f; // Ä«µåÀÇ »ç°Å¸®
+    public Transform ShootPos; // ì¹´ë“œë¥¼ ë°œì‚¬í•  ìœ„ì¹˜
+    public GameObject cardPrefab; // ë°œì‚¬í•  ì¹´ë“œ í”„ë¦¬íŒ¹
+    public float cardSpeed = 20f; // ì¹´ë“œì˜ ì†ë„
+    public float attackRange = 10f; // ì¹´ë“œì˜ ì‚¬ê±°ë¦¬
+
+    public float attackCooldown = 0.25f;   // ì—°íƒ€ ë°©ì§€ ì¿¨íƒ€ì„
+    bool attackBusy = false;
+    float nextAttackTime = 0f;
 
     [Header("Magician Guard Properties")]
-    public float shieldScaleDecrease = 0.3f; // °¡µå ½Ã ½¯µå Å©±â °¨¼Ò·®
-    public float minShieldScale = 0.1f; // ½¯µå°¡ ÆÄ±«µÇ´Â ÃÖ¼Ò Å©±â
-    public float shieldRegenTime = 2.0f; // ½¯µå Àç»ı¼º ½Ã°£
+    public float shieldScaleDecrease = 0.3f; // ê°€ë“œ ì‹œ ì‰´ë“œ í¬ê¸° ê°ì†ŒëŸ‰
+    public float minShieldScale = 0.1f; // ì‰´ë“œê°€ íŒŒê´´ë˜ëŠ” ìµœì†Œ í¬ê¸°
+    public float shieldRegenTime = 2.0f; // ì‰´ë“œ ì¬ìƒì„± ì‹œê°„
     private Vector3 initialShieldScale;
 
     [Header("Dash Hit")]
-    public Collider2D DashCollider;       // Æ®¸®°Å
-    public float dashDamage = 12f;         // ´ë½¬ °ø°İ·Â
-    public float dashRehitCooldown = 1f;   // µ¿ÀÏ ´ë»ó ÀçÅ¸°İ ÄğÅ¸ÀÓ
+    public Collider2D DashCollider;       // íŠ¸ë¦¬ê±°
+    public float dashDamage = 12f;         // ëŒ€ì‰¬ ê³µê²©ë ¥
+    public float dashRehitCooldown = 1f;   // ë™ì¼ ëŒ€ìƒ ì¬íƒ€ê²© ì¿¨íƒ€ì„
     private bool dashHitActive = false;
     private readonly Dictionary<int, float> _dashLastHit = new();
 
@@ -28,35 +32,27 @@ public class MagicianCharacter : CharacterBase
 
     new void Start()
     {
-        // CharacterBaseÀÇ Start() ÇÔ¼ö¸¦ ¸ÕÀú È£Ãâ
         base.Start();
-
-        // ½¯µå ¿ÀºêÁ§Æ®ÀÇ ÃÊ±â Å©±â ÀúÀå
         if (ShieldObject != null)
-        {
             initialShieldScale = ShieldObject.transform.localScale;
-        }
     }
 
     void Update()
     {
-        // ·ÎÄÃ ÇÃ·¹ÀÌ¾î¸¸ ÀÔ·ÂÀ» ¹Ş½À´Ï´Ù.
         if (photonView.IsMine)
         {
-            // °¡µå (K Å°) - Å°¸¦ ´©¸£´Â µ¿¾È¸¸ ÀÛµ¿
+            // ê°€ë“œ (K í‚¤)
             if (Input.GetKey(KeyCode.K))
             {
                 if (!isGuarding)
                 {
                     isGuarding = true;
-                    // °¡µå ½ÃÀÛ ·ÎÁ÷
                     StartGuard();
                 }
                 UpdateGuard();
             }
             else if (isGuarding)
             {
-                // °¡µå Á¾·á ·ÎÁ÷
                 isGuarding = false;
                 EndGuard();
             }
@@ -65,10 +61,8 @@ public class MagicianCharacter : CharacterBase
 
     private void StartGuard()
     {
-        Debug.Log("¸¶¼ú»ç Ä³¸¯ÅÍÀÇ °¡µå ½ÃÀÛ!");
         if (ShieldObject != null)
         {
-            // °¡µå ½ÃÀÛ ½Ã ½¯µå È°¼ºÈ­
             ShieldObject.SetActive(true);
             SetGuarding(true);
         }
@@ -78,21 +72,16 @@ public class MagicianCharacter : CharacterBase
     {
         if (ShieldObject != null)
         {
-            // ½¯µå Å©±â °¨¼Ò
             Vector3 newScale = ShieldObject.transform.localScale - new Vector3(shieldScaleDecrease, shieldScaleDecrease, 0) * Time.deltaTime;
             ShieldObject.transform.localScale = newScale;
 
-            // ½¯µå ÆÄ±« Á¶°Ç
             if (newScale.x <= minShieldScale)
-            {
                 BreakShield();
-            }
         }
     }
 
     private void EndGuard()
     {
-        Debug.Log("¸¶¼ú»ç Ä³¸¯ÅÍÀÇ °¡µå Á¾·á!");
         if (ShieldObject != null)
         {
             ShieldObject.SetActive(false);
@@ -102,61 +91,70 @@ public class MagicianCharacter : CharacterBase
 
     private void BreakShield()
     {
-        Debug.Log("½¯µå ÆÄ±«! 2ÃÊ°£ ÀÌµ¿ ºÒ°¡!");
-        // ½¯µå ÆÄ±« ½Ã ºñÈ°¼ºÈ­ ¹× ÀÌµ¿ ºÒ°¡ »óÅÂ·Î ÀüÈ¯
         ShieldObject.SetActive(false);
-        isGuarding = false; // °¡µå »óÅÂ¸¦ Áï½Ã Á¾·á
+        isGuarding = false;
         StartCoroutine(ImmobilizeCharacter());
-
-        // 2ÃÊ µÚ ½¯µå Àç»ı¼º ÄÚ·çÆ¾ ½ÃÀÛ
         StartCoroutine(RegenerateShield());
     }
 
     private IEnumerator RegenerateShield()
     {
         yield return new WaitForSeconds(shieldRegenTime);
-        Debug.Log("½¯µå Àç»ı¼º!");
         if (ShieldObject != null)
-        {
             ShieldObject.transform.localScale = initialShieldScale;
-        }
     }
 
-    /// <summary>
-    /// °ø°İ Çàµ¿À» ÀçÁ¤ÀÇÇÕ´Ï´Ù.
-    /// ShootPos À§Ä¡¿¡¼­ Ä«µå¸¦ ¹ß»çÇÕ´Ï´Ù.
-    /// </summary>
+    /// <summary>ê¸°ë³¸ ê³µê²©: ì—°íƒ€ ë°©ì§€(ì¿¨íƒ€ì„+ë½)ë¡œ 1íšŒë§Œ ë°œì‚¬</summary>
     public override void Attack()
     {
-        AnimTrigger("Attack");
-        if (cardPrefab != null && ShootPos != null)
-        {
-            // ³×Æ®¿öÅ©·Î ¹ß»çÃ¼ »ı¼º
-            GameObject card = PhotonNetwork.Instantiate(cardPrefab.name, ShootPos.position, ShootPos.rotation);
+        if (!photonView.IsMine) return;
+        if (attackBusy) return;
+        if (Time.time < nextAttackTime) return;
 
-            // Projectile ½ºÅ©¸³Æ®¿¡ ÇÊ¿äÇÑ Á¤º¸ Àü´Ş
-            Projectile projectile = card.GetComponent<Projectile>();
-            if (projectile != null)
-            {
-                // ¹ß»ç ¹æÇâÀº Ä³¸¯ÅÍÀÇ ÇöÀç ¹æÇâÀ» µû¸§
-                float direction = isFacingRight ? 1f : -1f;
-                projectile.Initialize(transform.position, new Vector2(direction, 0f), cardSpeed, attackRange);
-            }
+        StartCoroutine(Co_AttackOnce());
+    }
+
+    private IEnumerator Co_AttackOnce()
+    {
+        attackBusy = true;
+        nextAttackTime = Time.time + attackCooldown;
+
+        // ì• ë‹ˆ íŠ¸ë¦¬ê±° ì „íŒŒ
+        AnimTrigger("Attack");
+
+        // ë°œì‚¬ íƒ€ì´ë°(ì• ë‹ˆ íƒ€ì´ë°ì— ë§ì¶° ì•½ê°„ ë”œë ˆì´ â€” í•„ìš”ì‹œ ì¡°ì •)
+        yield return new WaitForSeconds(0.06f);
+        FireCardOnce();
+
+        // ì•½ê°„ì˜ í›„ë”œ(ì„ íƒ)
+        yield return new WaitForSeconds(0.12f);
+
+        attackBusy = false;
+    }
+
+    private void FireCardOnce()
+    {
+        if (!photonView.IsMine) return;
+        if (cardPrefab == null || ShootPos == null) return;
+
+        GameObject card = PhotonNetwork.Instantiate(cardPrefab.name, ShootPos.position, ShootPos.rotation);
+        Projectile projectile = card.GetComponent<Projectile>();
+        if (projectile != null)
+        {
+            float direction = isFacingRight ? 1f : -1f;
+            projectile.Initialize(transform.position, new Vector2(direction, 0f), cardSpeed, attackRange);
         }
     }
+
     protected override void OnDamaged(float finalDamage)
     {
         AnimTrigger("Hit");
     }
 
-    public override void Guard()
-    {
-        // Update()¿¡¼­ °¡µå ·ÎÁ÷À» Ã³¸®ÇÏ¹Ç·Î ÀÌ ÇÔ¼ö´Â ºñ¿öµÓ´Ï´Ù.
-    }
+    public override void Guard() { /* Updateì—ì„œ ì²˜ë¦¬ */ }
 
     public void HoldAttack()
     {
-        Debug.Log("[Magician] HoldAttack ¹ßµ¿!");
         StartCoroutine(HoldAttackRoutine());
     }
 
@@ -164,15 +162,20 @@ public class MagicianCharacter : CharacterBase
     {
         anim?.SetBool("IsHolding", true);
         yield return new WaitForSeconds(0.1f);
+
         float direction = isFacingRight ? 1f : -1f;
         AnimTrigger("Attack");
         anim?.SetBool("IsHolding", false);
+
+        // í™€ë“œ ê³µê²©ì€ ì˜ë„ì ìœ¼ë¡œ ì—°ì‚¬(íƒ€ë‹¤ë‹¥)
         for (int i = 0; i < 4; i++)
         {
             GameObject card = PhotonNetwork.Instantiate(cardPrefab.name, ShootPos.position, Quaternion.identity);
             Projectile proj = card.GetComponent<Projectile>();
-            proj.Initialize(transform.position, new Vector2(direction, 0f), cardSpeed, attackRange);
-            yield return new WaitForSeconds(0.1f); // Å¸´Ù´Ú
+            if (proj != null)
+                proj.Initialize(transform.position, new Vector2(direction, 0f), cardSpeed, attackRange);
+
+            yield return new WaitForSeconds(0.1f);
         }
     }
 
@@ -201,26 +204,19 @@ public class MagicianCharacter : CharacterBase
             elapsed += Time.deltaTime;
             yield return null;
         }
+
         dashHitActive = false;
         if (DashCollider) DashCollider.enabled = false;
     }
 
-    /// <summary>
-    /// ½¯µå Äİ¶óÀÌ´õ¿¡ ´Ù¸¥ ¿ÀºêÁ§Æ®°¡ ´ê¾ÒÀ» ¶§ È£ÃâµË´Ï´Ù.
-    /// </summary>
     private void OnTriggerEnter2D(Collider2D other)
     {
         HandleDashHit(other);
-        // 'Card' ÅÂ±×¸¦ °¡Áø ¿ÀºêÁ§Æ®¿¡ ¸Â¾ÒÀ» ¶§
+
         if (other.CompareTag("Card"))
         {
-            // ³» ½¯µå ¿ÀºêÁ§Æ®°¡ È°¼ºÈ­µÇ¾î ÀÖ´Â »óÅÂ¿¡¼­¸¸ Ä«µå Á¦°Å
             if (ShieldObject != null && ShieldObject.activeSelf)
-            {
-                Debug.Log("°¡µå·Î Ä«µå ¹ß»çÃ¼ ¹æ¾î!");
-                // ¹ß»çÃ¼ ÆÄ±«
                 PhotonNetwork.Destroy(other.gameObject);
-            }
         }
     }
     private void OnTriggerStay2D(Collider2D other) => HandleDashHit(other);
@@ -232,12 +228,11 @@ public class MagicianCharacter : CharacterBase
         if (DashCollider == null || !DashCollider.enabled) return;
         if (other == null) return;
 
-        // ³» ´ë½¬ Äİ¶óÀÌ´õ°¡ ¸Â´êÀº »ó´ë¸¸ Ã³¸®(¿øÇÑ´Ù¸é ·¹ÀÌ¾î/ÅÂ±×·Î ´õ Á¼Çôµµ µÊ)
         var target = other.GetComponentInParent<CharacterBase>();
         if (target == null) return;
 
         var tpv = target.photonView;
-        if (tpv == null || tpv.Owner == photonView.Owner) return; // ÀÚ±â ÀÚ½Å/µ¿ÀÏ ¼ÒÀ¯ÀÚ Á¦¿Ü
+        if (tpv == null || tpv.Owner == photonView.Owner) return;
 
         int aid = tpv.Owner != null ? tpv.Owner.ActorNumber : 0;
         if (_dashLastHit.TryGetValue(aid, out var t) && Time.time - t < dashRehitCooldown) return;

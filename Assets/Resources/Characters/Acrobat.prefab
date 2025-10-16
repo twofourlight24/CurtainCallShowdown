@@ -213,7 +213,7 @@ MonoBehaviour:
   LifeCount: 3
   commandSet: {fileID: 11400000, guid: 6b59130e8ee064c4f8a5a38a1b27ea80, type: 2}
   anim: {fileID: 7221178271988199760}
-  hub: {fileID: 0}
+  hub: {fileID: 2901549624770691917}
   ShieldObject: {fileID: 6318155360007728826}
   immobilizedTime: 1
   gm: {fileID: 0}

@@ -57,7 +57,7 @@ public class PlayerInput : MonoBehaviourPun, IPunObservable
 
     void Update()
     {
-        if (pv == null && !pv.IsMine) return;
+        if (pv != null && !pv.IsMine) { HandleNetworkInterpolation(); return; }
         if (controlledCharacter == null) return;
 
         if (photonView.IsMine)

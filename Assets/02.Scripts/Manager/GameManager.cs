@@ -347,9 +347,7 @@ public class GameManager : MonoBehaviourPunCallbacks
             if (pv != null && pv.IsMine) PhotonNetwork.Destroy(myChar);
             else myChar.SetActive(false);
         }
-
-        float w = 0f;
-        while (GetCharacterObject(PhotonNetwork.LocalPlayer) != null && w < 2f) { yield return null; w += Time.deltaTime; }
+        yield return new WaitForSeconds(delay);
 
         // 스폰 위치
         Vector3 pos = spawnPoints != null && spawnIndex >= 0 && spawnIndex < spawnPoints.Length
@@ -381,9 +379,9 @@ public class GameManager : MonoBehaviourPunCallbacks
             playerCharacters[PhotonNetwork.LocalPlayer.NickName] = newChar;
             EnsurePlayerInputBinding(newChar);
             
-
+             var view = newChar.GetPhotonView();
+             if (view) view.RPC("RPC_SetHp", RpcTarget.All, cb.MaxHp);
         }
-
         uiManager?.HideRespawnOverlay();
         UpdatePlayerUI(PhotonNetwork.LocalPlayer);
     }

@@ -133,14 +133,12 @@ public class DancerCharacter : CharacterBase
 
     private IEnumerator FreezeSeconds(float sec)
     {
-        float end = Time.time + sec;
-        while (Time.time < end)
-        {
-            // 이동 차단
-            if (_rb) _rb.linearVelocity = new Vector2(0f, _rb.linearVelocity.y);
-            moveSpeed = 0f;
-            yield return null;
-        }
+        float originalSpeed = runSpeed; //  원래 이동속도 저장
+        runSpeed = 0f; // 움직임 차단
+
+        yield return new WaitForSeconds(sec);
+
+        runSpeed = originalSpeed;
     }
 
     private void GuardTick()
