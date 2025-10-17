@@ -7,8 +7,8 @@ public class AcrobatCharacter : CharacterBase
     [Header("Melee (기본공격)")]
     public Collider2D attackCollider;          // Trigger
     public float basicStiffTime = 0.2f;
-    public float basicActiveTime = 0.18f;
-    public float basicDamage = 15f;
+    public float basicActiveTime = 0.05f;
+    public float basicDamage = 6f;
     public float rehitCooldown = 0.15f;
 
     [Header("Bomb (홀드공격/던지기)")]
@@ -89,14 +89,12 @@ public class AcrobatCharacter : CharacterBase
     // ===== 구현 =====
     private IEnumerator Co_BasicMelee()
     {
-        // 경직(이동 불가)
-        float end = Time.time + basicStiffTime;
-        while (Time.time < end)
-        {
-            if (rb) rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
-            moveSpeed = 0f;
-            yield return null;
-        }
+        float originalSpeed = runSpeed; //  원래 이동속도 저장
+        runSpeed = 0f; // 움직임 차단
+
+        yield return new WaitForSeconds(0.2f);
+
+        runSpeed = originalSpeed;
 
         currentDamage = basicDamage;
         if (attackCollider) attackCollider.enabled = true;

@@ -219,8 +219,8 @@ MonoBehaviour:
   gm: {fileID: 0}
   attackCollider: {fileID: 5302690696338132787}
   basicStiffTime: 0.2
-  basicActiveTime: 0.18
-  basicDamage: 15
+  basicActiveTime: 0.05
+  basicDamage: 6
   rehitCooldown: 0.15
   bombPrefab: {fileID: 7933602987962552079, guid: 22a500b7a787d4045b4c92b6d8a7bdb3, type: 3}
   throwOrigin: {fileID: 5417790647050272201}

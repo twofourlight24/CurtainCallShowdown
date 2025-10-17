@@ -10,7 +10,7 @@ public class BreakerCharacter : CharacterBase
 
     [Header("Attack - Basic")]
     public float basicStiffTime = 0.2f;
-    public float basicAttackTime = 0.18f;
+    public float basicAttackTime = 0.05f;
     public float basicDamage = 6f;
 
     [Header("Attack - Hold (tiers)")]
@@ -226,9 +226,10 @@ public class BreakerCharacter : CharacterBase
     {
         if (!photonView.IsMine) return;
         if (attackCollider == null || !attackCollider.enabled) return;
-        if (other == null || !other.CompareTag("Player")) return;
+        if (other == null) return;
 
-        var target = other.GetComponent<CharacterBase>(); if (target == null) return;
+        var target = other.GetComponent<CharacterBase>(); 
+        if (target == null) return;
         var tpv = target.photonView; if (tpv == null || tpv.Owner == photonView.Owner) return;
 
         // 재히트 쿨타임

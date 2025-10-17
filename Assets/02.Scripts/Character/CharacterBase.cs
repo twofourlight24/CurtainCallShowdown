@@ -34,7 +34,7 @@ public abstract class CharacterBase : MonoBehaviourPun, IPunInstantiateMagicCall
     private Vector3 moveDirection;
     private int jumpCount;
     private bool isGrounded = false;
-    private bool isImmobilized = false; // 움직이지 못하는 상태
+    protected bool isImmobilized; // 기존 private에서 protected로 변경
     private Collider2D currentPlatformCollider; // 현재 밟고 있는 플랫폼 콜라이더
     private bool isDead = false;
     private float invincibleUntil = 0f; // Time.time 기준

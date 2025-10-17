@@ -112,12 +112,15 @@ public class PlayerInput : MonoBehaviourPun, IPunObservable
             controlledCharacter?.Guard();
 
         // --- ���� ---
-        if (Input.GetKeyDown(KeyCode.Space))
-            controlledCharacter?.Jump();
-
-        // --- ���� ���: S + Space ���ÿ� ������ ���� ---
-        if (Input.GetKey(KeyCode.S) && Input.GetKey(KeyCode.Space))
+        if (Input.GetKey(KeyCode.S) && Input.GetKeyDown(KeyCode.Space))
+        {
             controlledCharacter?.DropThroughPlatform();
+        }
+        else if (Input.GetKeyDown(KeyCode.Space))
+        {
+            // --- 점프 ---
+            controlledCharacter?.Jump();
+        }
     }
     private void HandleCommandInput(KeyCode key)
     {

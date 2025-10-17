@@ -25,6 +25,9 @@ public class UIManager : MonoBehaviourPunCallbacks
     [Header("UI - Other")]
     public GameObject respawnOverlayPanel;  // 회색 이미지 패널 (Canvas 안)
     public TMP_Text respawnCountdownText;   // 남은 시간 표시
+    public GameObject OptionPanel;
+    public Button ReturnButton;
+    public Button QuitButton;
 
     [Header("UI - Result Panels")]
     public StartGamePanel startGamePanel;
@@ -33,6 +36,29 @@ public class UIManager : MonoBehaviourPunCallbacks
     public GamemodeVotePanel votePanel;
     public EventLotteryPanel eventLotteryPanel;
 
+    private void Start()
+    {
+        ReturnButton.onClick.AddListener(() => OptionPanel.SetActive(!OptionPanel.activeSelf));
+        QuitButton.onClick.AddListener(() =>
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        });
+    }
+    private void Update()
+    {
+        // 옵션 패널 토글 (ESC)
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (OptionPanel != null)
+            {
+                OptionPanel.SetActive(!OptionPanel.activeSelf);
+            }
+        }
+    }
 
     private int GetPlayerIndex(Player target)
     {

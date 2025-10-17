@@ -422,7 +422,7 @@ MonoBehaviour:
   rehitCooldown: 0.15
   basicStiffTime: 0.2
   basicAttackTime: 0.18
-  basicDamage: 15
+  basicDamage: 6
   tier1HoldSec: 1
   tier2HoldSec: 2
   tier3HoldSec: 3

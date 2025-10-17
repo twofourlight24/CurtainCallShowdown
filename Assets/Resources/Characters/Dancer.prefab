@@ -244,8 +244,8 @@ MonoBehaviour:
   attackCollider: {fileID: 6963039299445689586}
   rehitCooldown: 0.15
   basicStiffTime: 0.2
-  basicAttackTime: 0.18
-  basicDamage: 15
+  basicAttackTime: 0.05
+  basicDamage: 6
   runHoldTickDamage: 12
   runHoldHitInterval: 0.15
   runHoldMaxDuration: 6
